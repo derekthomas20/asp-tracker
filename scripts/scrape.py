@@ -424,10 +424,12 @@ def fetch(cand: Candidate, manifest: dict) -> str:
     tmp, sha, size, headers = download(cand.link.href)
     prev = cand.previous
     if prev and prev.get("sha256") == sha:
-        # Same bytes as before (only the date/URL text on the page changed).
+        # Same bytes as before: only the page text, URL or server headers
+        # changed. Record those so the next run doesn't download it again.
         tmp.unlink()
         prev.update({k: v for k, v in headers.items() if v})
-        prev["last_checked"] = _now()
+        prev.update({"url": cand.link.href, "posted_date": cand.posted,
+                     "anchor_text": cand.link.anchor_text, "link_text": cand.link.link_text})
         return "same-hash"
 
     dest = destination(cand.period, cand.posted, cand.link.href)
@@ -447,7 +449,6 @@ def fetch(cand: Candidate, manifest: dict) -> str:
         "sha256": sha,
         "size_bytes": size,
         "downloaded_at": _now(),
-        "last_checked": _now(),
         "change_reason": cand.reason,
         **headers,
     })
@@ -516,12 +517,14 @@ def main() -> int:
         RAW_DIR.mkdir(exist_ok=True)
         to_get = report.new + report.revised
         same, failed = [], []
+        before = json.dumps(manifest, sort_keys=True)
         for i, cand in enumerate(to_get, 1):
             print(f"[{i}/{len(to_get)}] {cand.period.label} {cand.category}: {cand.link.href}")
             try:
                 if fetch(cand, manifest) == "same-hash":
                     same.append(cand)
-                save_manifest(manifest)  # save after each file so a crash loses nothing
+                if json.dumps(manifest, sort_keys=True) != before:
+                    save_manifest(manifest)  # save after each file so a crash loses nothing
             except (urllib.error.URLError, OSError) as e:
                 failed.append(cand)
                 report.errors.append(f"download failed for {cand.link.href}: {e}")
@@ -531,8 +534,8 @@ def main() -> int:
         report.unchanged += same
         report.new = [c for c in report.new if c not in failed]
         report.revised = [c for c in report.revised if c not in same and c not in failed]
-        manifest["last_run"] = _now()
-        save_manifest(manifest)
+        if json.dumps(manifest, sort_keys=True) == before:
+            print("\nmanifest.json unchanged (nothing new or revised).")
 
     print_summary(report, args.dry_run)
     if args.dry_run:
