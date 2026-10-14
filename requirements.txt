@@ -1,2 +1,2 @@
 # scripts/scrape.py uses only the Python standard library.
-# Add packages here (with pinned versions) as later scripts need them.
+duckdb==1.5.6
