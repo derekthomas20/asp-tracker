@@ -215,3 +215,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Database built from raw/ by scripts/parse.py (rebuild it instead of committing it)
+data/asp.duckdb
+data/*.duckdb.tmp
+data/*.duckdb.wal
