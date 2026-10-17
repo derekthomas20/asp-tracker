@@ -2,14 +2,14 @@
 {% macro code_table(rows, limit_heading, root) %}
 <div class="table-wrap">
 <table class="stack">
-  <thead><tr><th>Code</th><th>Description</th><th>Billing unit</th><th class="num">{{ limit_heading }}</th></tr></thead>
+  <thead><tr><th>Code</th><th>Drug</th><th>Billing unit</th><th class="num">{{ limit_heading }}</th></tr></thead>
   <tbody>
   {% for r in rows %}
     <tr>
-      <td data-label="Code"><a href="{{ root }}codes/{{ r.code }}.html">{{ r.code }}</a></td>
-      <td data-label="Description">{{ r.description }}</td>
-      <td data-label="Billing unit">{{ r.dosage }}</td>
-      <td data-label="{{ limit_heading }}" class="num">{{ r.limit|money }}</td>
+      <td data-label="Code" class="code"><a href="{{ root }}codes/{{ r.code }}.html">{{ r.code }}</a></td>
+      <td data-label="Drug"><a class="name" href="{{ root }}codes/{{ r.code }}.html">{{ r.description }}</a></td>
+      <td data-label="Billing unit" class="muted">{{ r.dosage }}</td>
+      <td data-label="{{ limit_heading }}" class="num strong">{{ r.limit|money }}</td>
     </tr>
   {% endfor %}
   </tbody>
@@ -17,25 +17,35 @@
 </div>
 {% endmacro %}
 
-{# Movers table. rows: code, description, dosage, prior, latest, change, pct #}
-{% macro movers_table(rows, s, root) %}
+{# Movers table in the design's ledger style.
+   rows: code, description, dosage, prior, latest, change, pct, spark
+   rank_by: "pct" or "dollars" - which change the bar is drawn from #}
+{% macro movers_table(rows, s, root, rank_by, spark_quarters) %}
+{% set max_change = rows|map(attribute="change")|map("abs")|max %}
 <div class="table-wrap">
 <table class="stack filterable">
   <thead><tr>
-    <th>Code</th><th>Description</th><th>Billing unit</th>
+    <th>Code</th><th>Drug</th><th>Billing unit</th>
     <th class="num">{{ s.prior_q|quarter }}</th><th class="num">{{ s.latest_q|quarter }}</th>
-    <th class="num">Change</th><th class="num">% change</th>
+    <th>{{ "% change" if rank_by == "pct" else "Change" }}</th>
+    <th class="num">{{ "Change" if rank_by == "pct" else "% change" }}</th>
+    <th>{{ spark_quarters }} quarters</th>
   </tr></thead>
   <tbody>
   {% for r in rows %}
+    {% set dir = "up" if r.change > 0 else "down" %}
+    {% if rank_by == "pct" %}{% set bar = [r.pct|abs * 3, 100]|min %}{% else %}{% set bar = r.change|abs / max_change * 100 %}{% endif %}
     <tr>
-      <td data-label="Code"><a href="{{ root }}codes/{{ r.code }}.html">{{ r.code }}</a></td>
-      <td data-label="Description">{{ r.description }}</td>
-      <td data-label="Billing unit">{{ r.dosage }}</td>
-      <td data-label="{{ s.prior_q|quarter }}" class="num">{{ r.prior|money }}</td>
-      <td data-label="{{ s.latest_q|quarter }}" class="num">{{ r.latest|money }}</td>
-      <td data-label="Change" class="num {{ 'up' if r.change > 0 else 'down' }}">{{ r.change|signed_money }}</td>
-      <td data-label="% change" class="num {{ 'up' if r.change > 0 else 'down' }}">{{ r.pct|percent }}</td>
+      <td data-label="Code" class="code"><a href="{{ root }}codes/{{ r.code }}.html">{{ r.code }}</a></td>
+      <td data-label="Drug"><a class="name" href="{{ root }}codes/{{ r.code }}.html">{{ r.description }}</a></td>
+      <td data-label="Billing unit" class="muted">{{ r.dosage }}</td>
+      <td data-label="{{ s.prior_q|quarter }}" class="num muted">{{ r.prior|money }}</td>
+      <td data-label="{{ s.latest_q|quarter }}" class="num strong">{{ r.latest|money }}</td>
+      <td data-label="{{ '% change' if rank_by == 'pct' else 'Change' }}">
+        <span class="change-cell {{ dir }}"><span class="bar" style="width:{{ '%.0f'|format(bar) }}px"></span>{{ r.pct|arrow_percent if rank_by == "pct" else r.change|signed_money }}</span>
+      </td>
+      <td data-label="{{ 'Change' if rank_by == 'pct' else '% change' }}" class="num {{ dir }}">{{ r.change|signed_money if rank_by == "pct" else r.pct|percent }}</td>
+      <td data-label="{{ spark_quarters }} quarters" class="spark-cell {{ dir }}">{{ r.spark }}</td>
     </tr>
   {% endfor %}
   </tbody>

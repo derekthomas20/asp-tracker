@@ -5,19 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{% endblock %} · ASP Tracker</title>
 <meta name="description" content="Medicare Part B drug payment limits from the CMS quarterly ASP pricing files.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap">
 <link rel="stylesheet" href="{{ root }}style.css">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="site-header">
-  <div class="wrap">
+<header class="masthead wrap">
+  <div class="masthead-top">
     <a class="brand" href="{{ root }}index.html">ASP Tracker</a>
+    <form class="header-search" action="{{ root }}search.html" role="search" autocomplete="off">
+      <label for="site-q" class="skip">Search codes</label>
+      <input id="site-q" name="q" type="search" placeholder="Search code or drug name"
+             aria-autocomplete="list" aria-controls="site-suggest" aria-expanded="false">
+      <ul class="suggest" id="site-suggest" role="listbox" hidden></ul>
+    </form>
+  </div>
+  <div class="dateline">
+    <span>Medicare Part B payment limits</span>
+    <span>Effective {{ latest_q|effective }}</span>
+    {% if latest_posted %}<span class="muted">Posted by CMS {{ latest_posted|long_date }}</span>{% endif %}
     <nav aria-label="Main">
       {% for href, label in nav %}
       <a href="{{ root }}{{ href }}"{% if href == current_page %} aria-current="page"{% endif %}>{{ label }}</a>
       {% endfor %}
     </nav>
   </div>
+  <div class="rule-under"></div>
 </header>
 <main id="main" class="wrap">
 {% block content %}{% endblock %}
@@ -28,6 +43,55 @@
     Not affiliated with CMS. Listing in the file does not mean Medicare covers a drug. <a href="{{ root }}about.html">About this data</a></p>
   </div>
 </footer>
+<script src="{{ root }}search-index.js" defer></script>
+<script>
+// Header search: suggest codes as you type; Enter opens the highlighted one,
+// or the search page for anything else. Without JavaScript the box still
+// submits to the search page.
+document.addEventListener("DOMContentLoaded", function () {
+  var root = {{ root|tojson }};
+  var input = document.getElementById("site-q");
+  var list = document.getElementById("site-suggest");
+  var picked = -1;
+  function close() { list.hidden = true; input.setAttribute("aria-expanded", "false"); picked = -1; }
+  function links() { return list.querySelectorAll("a"); }
+  function mark() {
+    links().forEach(function (a, i) { a.setAttribute("aria-selected", String(i === picked)); });
+  }
+  input.addEventListener("input", function () {
+    var words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    list.innerHTML = "";
+    if (!words.length || !window.SEARCH_INDEX) return close();
+    var hits = [];
+    for (var i = 0; i < window.SEARCH_INDEX.length && hits.length < 8; i++) {
+      var r = window.SEARCH_INDEX[i];
+      var text = (r[0] + " " + r[1] + " " + r[3]).toLowerCase();
+      if (words.every(function (w) { return text.indexOf(w) !== -1; })) hits.push(r);
+    }
+    if (!hits.length) return close();
+    hits.forEach(function (r) {
+      var li = document.createElement("li");
+      var a = document.createElement("a");
+      a.href = root + "codes/" + r[0] + ".html";
+      a.setAttribute("role", "option");
+      [["code", r[0]], ["name", r[1]], ["price", r[2]]].forEach(function (p) {
+        var s = document.createElement("span"); s.className = p[0]; s.textContent = p[1]; a.appendChild(s);
+      });
+      li.appendChild(a); list.appendChild(li);
+    });
+    list.hidden = false; input.setAttribute("aria-expanded", "true"); picked = -1;
+  });
+  input.addEventListener("keydown", function (e) {
+    var n = links().length;
+    if (list.hidden || !n) return;
+    if (e.key === "ArrowDown") { picked = (picked + 1) % n; mark(); e.preventDefault(); }
+    else if (e.key === "ArrowUp") { picked = (picked - 1 + n) % n; mark(); e.preventDefault(); }
+    else if (e.key === "Escape") { close(); }
+    else if (e.key === "Enter" && picked >= 0) { window.location.href = links()[picked].href; e.preventDefault(); }
+  });
+  document.addEventListener("click", function (e) { if (!input.form.contains(e.target)) close(); });
+});
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -2,8 +2,9 @@
 {% from "macros.html" import code_table %}
 {% block title %}New and dropped codes, {{ s.latest_q|quarter }}{% endblock %}
 {% block content %}
-<h1>New and dropped codes: {{ s.latest_q|quarter }}</h1>
-<p>Codes in the {{ s.latest_q|quarter }} file that were not in the {{ s.prior_q|quarter }} file, and the other way round.
+<span class="kicker">{{ s.prior_q|quarter }} → {{ s.latest_q|quarter }}</span>
+<h1>New and dropped codes</h1>
+<p class="dek">Codes in the {{ s.latest_q|quarter }} file that were not in the {{ s.prior_q|quarter }} file, and the other way round.
 A code can leave the file for many reasons, such as being replaced by a new code. This page does not say why.</p>
 
 <h2 id="new">New in {{ s.latest_q|quarter }} ({{ s.n_new|num }})</h2>

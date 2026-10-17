@@ -2,19 +2,31 @@
 {% from "macros.html" import movers_table %}
 {% block title %}Biggest movers, {{ s.latest_q|quarter }}{% endblock %}
 {% block content %}
-<h1>Biggest movers: {{ s.prior_q|quarter }} to {{ s.latest_q|quarter }}</h1>
-<p>The {{ top_n }} largest increases and {{ top_n }} largest decreases in payment limit, ranked by percent or dollar change.
+<span class="kicker">{{ s.prior_q|quarter }} → {{ s.latest_q|quarter }}</span>
+<h1>Quarter-over-quarter movers</h1>
+<p class="dek">The {{ top_n }} largest increases and {{ top_n }} largest decreases in payment limit.
 Only the {{ s.compared|num }} codes with a payment limit in both quarters and the same billing unit are compared.</p>
 
-<div class="toggle" role="group" aria-label="Rank by" hidden>
-  <button type="button" data-view="pct" aria-pressed="true">Percent change</button>
-  <button type="button" data-view="dollars" aria-pressed="false">Dollar change</button>
+<div class="figures" style="padding-top:var(--space-4)">
+  <div class="figure"><span class="big up">{{ s.up|num }}</span><span class="label">up</span></div>
+  <div class="figure"><span class="big down">{{ s.down|num }}</span><span class="label">down</span></div>
+  <div class="figure"><span class="big">{{ s.same|num }}</span><span class="label">unchanged</span></div>
 </div>
 
-<div class="filter">
-  <label for="filter">Filter these tables</label>
-  <input id="filter" type="search" placeholder="Code or drug name" autocomplete="off">
-  <p id="filter-status" class="note" aria-live="polite"></p>
+<div style="padding-top:var(--space-8)">
+  <div class="seg-row toggle" hidden>
+    <span class="muted">Rank by</span>
+    <div class="seg" role="group" aria-label="Rank by">
+      <button type="button" data-view="pct" aria-pressed="true">Percent change</button>
+      <button type="button" data-view="dollars" aria-pressed="false">Dollar change</button>
+    </div>
+  </div>
+
+  <div class="filter">
+    <label for="filter">Filter these tables</label>
+    <input id="filter" type="search" placeholder="Code or drug name" autocomplete="off">
+    <p id="filter-status" class="note" aria-live="polite"></p>
+  </div>
 </div>
 
 {% set views = [
@@ -27,13 +39,14 @@ Only the {{ s.compared|num }} codes with a payment limit in both quarters and th
   <p class="note">Codes with a {{ s.prior_q|quarter }} payment limit under {{ pct_min_prior|money }} are left out of this ranking, because a change of a few cents on a small amount
   looks like a very large percent{% if n_below_floor %} ({{ n_below_floor|num }} codes that changed are left out){% endif %}. They are still in the dollar ranking.</p>
   {% endif %}
-  <h2 id="increases-{{ key }}">Biggest increases {{ label }}</h2>
-  {% if movers[key].increases %}{{ movers_table(movers[key].increases, s, root) }}{% else %}<p>No payment limits went up this quarter.</p>{% endif %}
+  <h2 id="increases-{{ key }}">Largest increases {{ label }}</h2>
+  {% if movers[key].increases %}{{ movers_table(movers[key].increases, s, root, key, spark_quarters) }}{% else %}<p>No payment limits went up this quarter.</p>{% endif %}
 
-  <h2 id="decreases-{{ key }}">Biggest decreases {{ label }}</h2>
-  {% if movers[key].decreases %}{{ movers_table(movers[key].decreases, s, root) }}{% else %}<p>No payment limits went down this quarter.</p>{% endif %}
+  <h2 id="decreases-{{ key }}">Largest decreases {{ label }}</h2>
+  {% if movers[key].decreases %}{{ movers_table(movers[key].decreases, s, root, key, spark_quarters) }}{% else %}<p>No payment limits went down this quarter.</p>{% endif %}
 </section>
 {% endfor %}
+<p class="note">The trend lines show each code’s payment limit for the last {{ spark_quarters }} quarters, with a dot on {{ s.latest_q|quarter }}. Gaps are quarters with no limit or a different billing unit.</p>
 {% endblock %}
 {% block scripts %}
 <script>

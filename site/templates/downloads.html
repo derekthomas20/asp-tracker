@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Downloads{% endblock %}
 {% block content %}
+<span class="kicker cyan">Data</span>
 <h1>Downloads</h1>
 <p><a class="button" href="{{ root }}downloads/{{ csv_name }}" download>Download {{ csv_name }}</a>
 <span class="muted">({{ csv_rows|num }} rows, about {{ csv_kb|num }} KB)</span></p>

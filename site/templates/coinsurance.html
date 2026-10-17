@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Reduced coinsurance, {{ latest_q|quarter }}{% endblock %}
+{% block content %}
+<span class="kicker">Inflation-adjusted coinsurance · {{ latest_q|quarter }}</span>
+<h1>{{ co.rows|length|num }} drugs carry reduced coinsurance</h1>
+<p class="dek">Most codes in the {{ latest_q|quarter }} file ({{ co.usual_n|num }} of {{ co.n_codes|num }}) carry a {{ co.usual|plain_percent }} coinsurance.
+For the codes below, CMS lists a lower percentage and notes it as “inflation-adjusted coinsurance”. According to CMS, this happens when a Part B drug’s
+price rises faster than inflation. See the <a href="{{ rebate_page }}">Medicare Inflation Rebate Program</a>.</p>
+<p class="note">Sorted by coinsurance, lowest first. “Patient pays less” is the payment limit times the difference between {{ co.usual|plain_percent }} and the code’s coinsurance,
+for one billing unit, rounded to the cent. What a patient actually pays also depends on other coverage they have.
+Codes with 0% coinsurance are not listed: CMS does not note them as inflation-adjusted.</p>
+
+{% if co.rows %}
+<div class="table-wrap">
+<table class="stack">
+  <thead><tr><th>Code</th><th>Drug</th><th>Billing unit</th><th class="num">Payment limit</th><th class="num">Coinsurance</th><th class="num">Patient pays less</th></tr></thead>
+  <tbody>
+  {% for r in co.rows %}
+    <tr>
+      <td data-label="Code" class="code"><a href="{{ root }}codes/{{ r.code }}.html">{{ r.code }}</a></td>
+      <td data-label="Drug"><a class="name" href="{{ root }}codes/{{ r.code }}.html">{{ r.description }}</a></td>
+      <td data-label="Billing unit" class="muted">{{ r.dosage }}</td>
+      <td data-label="Payment limit" class="num">{{ r.limit|money }}</td>
+      <td data-label="Coinsurance" class="num strong up">{{ r.co|plain_percent }}</td>
+      <td data-label="Patient pays less" class="num">{{ r.saves|cents }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>No codes have reduced coinsurance this quarter.</p>
+{% endif %}
+{% endblock %}

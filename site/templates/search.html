@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Search codes{% endblock %}
 {% block content %}
-<h1>Search</h1>
+<span class="kicker cyan">{{ codes|length|num }} codes, {{ latest_q|quarter }}</span>
+<h1>All codes</h1>
 <form class="search-form" id="search-form" role="search">
   <label for="q">Code or drug name</label>
   <div class="search-row">

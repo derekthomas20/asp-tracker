@@ -5,15 +5,20 @@ database is built from the CMS files in raw/ by scripts/parse.py. Nothing is
 typed in by hand.
 
 Pages written to public/:
-    index.html          the latest quarter in one paragraph
+    index.html          the latest quarter: lead mover, lists, summary paragraph
     movers.html         biggest increases and decreases vs the prior quarter
     changes.html        codes new or dropped this quarter
-    codes/XXXXX.html    one page per HCPCS code: chart, table, CMS source links
+    coinsurance.html    codes with reduced (inflation-adjusted) coinsurance
+    codes/XXXXX.html    one page per HCPCS code: chart, products (NDCs),
+                        table, CMS source links
     search.html         find a code by code or drug name
     downloads.html      the full history as one CSV (in downloads/)
     about.html          where the data comes from and what it means
+    search-index.js     the list behind the header search suggestions
+    charts.js           draws the Chart.js line charts in the site's style
 
-Templates are in site/templates and the stylesheet is site/style.css.
+Templates are in site/templates; site/style.css and site/charts.js are
+copied as they are. The look follows the "Broadsheet" design in design/.
 public/ is deleted and rebuilt from scratch on every run.
 
 Usage (from the repository root, after scripts/parse.py):
@@ -22,6 +27,7 @@ Usage (from the repository root, after scripts/parse.py):
 
 from __future__ import annotations
 
+import calendar
 import csv
 import html
 import json
@@ -29,18 +35,21 @@ import re
 import shutil
 import statistics
 import sys
+from collections import Counter
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import duckdb
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+from markupsafe import Markup
 
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "data" / "asp.duckdb"
 MANIFEST_PATH = ROOT / "data" / "manifest.json"
 TEMPLATES = ROOT / "site" / "templates"
 STYLESHEET = ROOT / "site" / "style.css"
+CHART_SCRIPT = ROOT / "site" / "charts.js"
 OUT = ROOT / "public"
 CSV_NAME = "asp-payment-limits-history.csv"
 
@@ -49,6 +58,11 @@ TOP_N = 25  # rows in each movers table
 # ranking: a few cents of change on a tiny base looks like a huge percent.
 # They still appear in the dollar ranking.
 PCT_MIN_PRIOR = Decimal("1")
+SPARK_QUARTERS = 8  # quarters shown in the small trend lines and home chart
+AROUND_LEAD = 6  # rows in the home page "Also rising" / "Largest decreases" lists
+IRA_LIST = 8  # rows in the home page reduced coinsurance list
+REBATE_PAGE = ("https://www.cms.gov/initiatives/medicare-prescription-drug-affordability/"
+               "overview/medicare-inflation-rebate-program")
 
 NAV = [
     ("index.html", "Home"),
@@ -89,6 +103,13 @@ def money(value: Decimal | None) -> str:
     return f"${value:,.{places}f}"
 
 
+def cents(value: Decimal | None) -> str:
+    """A computed dollar amount (not a CMS figure) rounded to the cent."""
+    if value is None:
+        return "N/A"
+    return money(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
 def sign(value) -> str:
     return "+" if value > 0 else "−" if value < 0 else ""
 
@@ -107,17 +128,73 @@ def percent(value: Decimal | None) -> str:
     return f"{sign(value)}{abs(value):.1f}%"
 
 
+def arrow_percent(value: Decimal | None) -> str:
+    """'↑ 4.4%' / '↓ 1.2%', the style used in the movers lists."""
+    if value is None:
+        return "N/A"
+    arrow = "↑ " if value > 0 else "↓ " if value < 0 else ""
+    return f"{arrow}{abs(value):.1f}%"
+
+
+def plain_percent(value: str | None) -> str:
+    """CMS coinsurance text such as '20.000' -> '20%', '11.501' -> '11.501%'.
+    Only trailing zeros are dropped; nothing is rounded."""
+    if not value:
+        return "N/A"
+    try:
+        return f"{Decimal(value).normalize():f}%"
+    except ArithmeticError:
+        return value
+
+
 def number(value: int) -> str:
     return f"{value:,}"
 
 
 def quarter_label(q: str) -> str:
-    return f"Q{q[5]} {q[:4]}"
+    """'2026Q4' -> '4Q26', the short form the design uses."""
+    return f"{q[5]}Q{q[2:4]}"
 
 
 def quarter_months(q: str) -> str:
     first, last = QUARTER_MONTHS[q[5]]
     return f"{first}–{last} {q[:4]}"
+
+
+def effective_range(q: str) -> str:
+    """'2026Q4' -> 'October 1 – December 31, 2026'."""
+    year, quarter = int(q[:4]), int(q[5])
+    last_month = quarter * 3
+    last_day = calendar.monthrange(year, last_month)[1]
+    first, last = QUARTER_MONTHS[q[5]]
+    return f"{first} 1 – {last} {last_day}, {year}"
+
+
+def sparkline(values: list[Decimal | None], width: int = 110, height: int = 28) -> str:
+    """A tiny SVG line of the given payment limits (None = gap), with a dot on
+    the last point. Values are turned into float pixel positions for drawing
+    only; the numbers shown in text elsewhere are the exact ones."""
+    points = [float(v) for v in values if v is not None]
+    if len(points) < 2:
+        return ""
+    lo, hi = min(points), max(points)
+    pad = (hi - lo or hi * 0.1 or 1) * 0.12
+    lo, hi = max(0.0, lo - pad), hi + pad
+    step = (width - 8) / (len(values) - 1)
+    x = lambda i: 4 + i * step
+    y = lambda v: 4 + (1 - (float(v) - lo) / (hi - lo)) * (height - 8)
+    path, pen_down = [], False
+    for i, v in enumerate(values):
+        if v is None:
+            pen_down = False
+            continue
+        path.append(f"{'L' if pen_down else 'M'}{x(i):.1f} {y(v):.1f}")
+        pen_down = True
+    dot = ""
+    if values[-1] is not None:
+        dot = f'<circle cx="{x(len(values) - 1):.1f}" cy="{y(values[-1]):.1f}" r="3"/>'
+    return (f'<svg class="spark" viewBox="0 0 {width} {height}" width="{width}" height="{height}" '
+            f'aria-hidden="true"><path d="{" ".join(path)}"/>{dot}</svg>')
 
 
 def quarter_offset(q: str, n: int) -> str:
@@ -149,8 +226,9 @@ def plain_decimal(value: Decimal | None) -> str:
 def load_rows(con) -> list[dict]:
     cur = con.execute("""
         SELECT effective_quarter, hcpcs_code, short_description, hcpcs_dosage,
-               payment_limit, payment_limit_text, source_file, cms_posted_date,
-               file_version, is_current
+               payment_limit, payment_limit_text, coinsurance_percentage,
+               vaccine_awp_pct, blood_awp_pct, clotting_factor, notes,
+               source_file, cms_posted_date, file_version, is_current
         FROM payment_limits
         ORDER BY effective_quarter, hcpcs_code, file_version
     """)
@@ -161,6 +239,64 @@ def load_rows(con) -> list[dict]:
         # Codes become file names, so anything unexpected stops the build.
         raise SystemExit(f"STOPPED: unexpected HCPCS code format: {bad[:10]}")
     return rows
+
+
+# Phrases in the CMS "Notes" column that say how a payment limit was set.
+# Only what CMS writes is shown; a code with none of these (and none of the
+# vaccine, blood or clotting factor columns filled in) gets "Not stated".
+BASIS_NOTES = [
+    ("8% of reference add-on applied", "Biosimilar: 8% of reference product add-on applied"),
+    ('"lesser of" methodology applied', '"Lesser of" methodology applied'),
+    ("AMP-based payment limit", "AMP-based payment limit"),
+]
+INFLATION_NOTE = "Inflation-adjusted coinsurance"
+
+
+def to_decimal(text: str | None) -> Decimal | None:
+    try:
+        return Decimal(text) if text and text.strip() else None
+    except ArithmeticError:
+        return None
+
+
+def payment_basis(r: dict) -> list[str]:
+    """How CMS says this payment limit was set, from the file's own columns."""
+    out = []
+    if r["vaccine_awp_pct"]:
+        out.append(f"Vaccine: {plain_percent(r['vaccine_awp_pct'])} of AWP")
+    if r["blood_awp_pct"]:
+        out.append(f"Blood product: {plain_percent(r['blood_awp_pct'])} of AWP")
+    if r["clotting_factor"]:
+        out.append("Clotting factor")
+    notes = (r["notes"] or "").lower()
+    out += [label for phrase, label in BASIS_NOTES if phrase.lower() in notes]
+    return out
+
+
+def load_products(con, quarter: str) -> dict[str, list[dict]]:
+    """NDC products mapped to each HCPCS code in the quarter's current
+    NDC-HCPCS crosswalk files. One entry per NDC (an NDC listed in more than
+    one crosswalk is shown once)."""
+    cur = con.execute("""
+        SELECT hcpcs_code, crosswalk_type, drug_name, labeler_name, ndc,
+               bill_units_pkg, source_file, cms_posted_date
+        FROM crosswalks
+        WHERE is_current AND effective_quarter = ? AND hcpcs_code IS NOT NULL
+        ORDER BY hcpcs_code, drug_name, ndc, crosswalk_type
+    """, [quarter])
+    names = [d[0] for d in cur.description]
+    out: dict[str, list[dict]] = {}
+    seen = set()
+    for r in (dict(zip(names, row)) for row in cur.fetchall()):
+        if (r["hcpcs_code"], r["ndc"]) in seen:
+            continue
+        seen.add((r["hcpcs_code"], r["ndc"]))
+        try:
+            r["units"] = Decimal((r["bill_units_pkg"] or "").replace(",", ""))
+        except ArithmeticError:
+            r["units"] = None  # not a number in the CMS file; shown as given
+        out.setdefault(r["hcpcs_code"], []).append(r)
+    return out
 
 
 def compare(latest: dict[str, dict], prior: dict[str, dict]) -> dict:
@@ -209,9 +345,10 @@ def make_env() -> Environment:
         lstrip_blocks=True,
         extensions=["jinja2.ext.do"],  # lets templates build short lists
     )
-    env.filters.update(money=money, signed_money=signed_money, percent=percent,
+    env.filters.update(money=money, cents=cents, signed_money=signed_money, percent=percent,
+                       arrow_percent=arrow_percent, plain_percent=plain_percent,
                        num=number, quarter=quarter_label, months=quarter_months,
-                       long_date=long_date, desc=display_text)
+                       effective=effective_range, long_date=long_date, desc=display_text)
     return env
 
 
@@ -229,18 +366,30 @@ def main() -> int:
 
     con = duckdb.connect(str(DB_PATH), read_only=True)
     rows = load_rows(con)
-    con.close()
-
     quarters = sorted({r["effective_quarter"] for r in rows})
     if len(quarters) < 2:
         raise SystemExit("STOPPED: need at least two quarters of data to compare.")
     latest_q, prior_q = quarters[-1], quarters[-2]
+    products = load_products(con, latest_q)
+    con.close()
 
     current = [r for r in rows if r["is_current"]]
     by_quarter: dict[str, dict[str, dict]] = {}
     for r in current:
         by_quarter.setdefault(r["effective_quarter"], {})[r["hcpcs_code"]] = r
     latest, prior = by_quarter[latest_q], by_quarter[prior_q]
+    recent_qs = quarters[-SPARK_QUARTERS:]
+
+    def recent_limits(code: str) -> list[Decimal | None]:
+        """Payment limits for the last few quarters, for sparklines. A quarter
+        whose billing unit differs from the latest one is left as a gap, so
+        the line never joins prices for different units."""
+        unit = (latest.get(code) or prior.get(code) or {}).get("hcpcs_dosage")
+        out = []
+        for q in recent_qs:
+            r = by_quarter[q].get(code)
+            out.append(r["payment_limit"] if r and same_unit(r["hcpcs_dosage"], unit) else None)
+        return out
 
     posted = {r["cms_posted_date"] for r in latest.values()}
     if len(posted) != 1:
@@ -263,10 +412,38 @@ def main() -> int:
         },
     }
     n_below_floor = sum(1 for c in compared if c["change"] != 0 and not pct_ok(c))
+    for c in compared:
+        c["spark"] = Markup(sparkline(recent_limits(c["code"])))
 
     def code_row(r: dict) -> dict:
         return {"code": r["hcpcs_code"], "description": display_text(r["short_description"]),
                 "dosage": r["hcpcs_dosage"], "limit": r["payment_limit"]}
+
+    # ---- Reduced coinsurance ----------------------------------------------
+    # "Usual" coinsurance is the percentage most codes in this quarter's file
+    # carry (computed, not typed in). Reduced = above 0% and below that.
+    co_values = [to_decimal(r["coinsurance_percentage"]) for r in latest.values()]
+    co_counts = Counter(v for v in co_values if v is not None)
+    if not co_counts:
+        raise SystemExit(f"STOPPED: no coinsurance percentages in {latest_q}.")
+    usual_co, usual_co_n = co_counts.most_common(1)[0]
+    reduced = []
+    for r in latest.values():
+        co = to_decimal(r["coinsurance_percentage"])
+        if co is None or not (0 < co < usual_co):
+            continue
+        saves = None
+        if r["payment_limit"] is not None:
+            saves = r["payment_limit"] * (usual_co - co) / 100
+        reduced.append({**code_row(r), "co": co, "saves": saves})
+    reduced.sort(key=lambda x: (x["co"], x["code"]))
+    # CMS also writes "Inflation-adjusted coinsurance" in the notes. If the
+    # note and the percentage ever disagree, say so in the build output.
+    noted = {c for c, r in latest.items() if INFLATION_NOTE.lower() in (r["notes"] or "").lower()}
+    mismatch = sorted(noted ^ {x["code"] for x in reduced})
+    coinsurance = {"usual": usual_co, "usual_n": usual_co_n, "rows": reduced, "mismatch": mismatch,
+                   "n_codes": len(latest), "top": reduced[:IRA_LIST]}
+    reduced_by_code = {x["code"]: x for x in reduced}
 
     new_codes = [code_row(latest[c]) for c in sorted(latest.keys() - prior.keys())]
     dropped_codes = [code_row(prior[c]) for c in sorted(prior.keys() - latest.keys())]
@@ -323,6 +500,27 @@ def main() -> int:
         for h in history:
             sources.setdefault(h["source_file"], h)
         units = {" ".join((r["hcpcs_dosage"] or "").upper().split()) for r in cur_rows.values()}
+
+        def change_since(quarters_back: int) -> Decimal | None:
+            """Percent change from the quarter N back to the newest one, only
+            when both have a payment limit and the same billing unit."""
+            then = cur_rows.get(quarter_offset(newest["effective_quarter"], -quarters_back))
+            if (then is None or then["payment_limit"] in (None, 0) or newest["payment_limit"] is None
+                    or not same_unit(then["hcpcs_dosage"], newest["hcpcs_dosage"])):
+                return None
+            return (newest["payment_limit"] - then["payment_limit"]) / then["payment_limit"] * 100
+
+        code_products = []
+        for prod in products.get(code, []) if code in latest else []:
+            per_pkg = None
+            if prod["units"] is not None and newest["payment_limit"] is not None:
+                per_pkg = prod["units"] * newest["payment_limit"]
+            code_products.append({**prod, "per_package": per_pkg})
+            sources.setdefault(prod["source_file"], {
+                "quarter": latest_q, "is_current": True, "posted": prod["cms_posted_date"],
+                "source_name": prod["source_file"].rsplit("/", 1)[-1],
+                "source_url": cms_url.get(prod["source_file"]),
+            })
         code_pages.append({
             "code": code,
             "description": display_text(newest["short_description"]),
@@ -340,7 +538,28 @@ def main() -> int:
                              if q in cur_rows else None for q in quarters],
             "history": history,
             "sources": sorted(sources.values(), key=lambda h: h["quarter"], reverse=True),
+            "qoq": change_since(1),
+            "yoy": change_since(4),
+            "coinsurance": newest["coinsurance_percentage"],
+            "reduced": reduced_by_code.get(code),
+            "basis": payment_basis(newest),
+            "notes": display_text(newest["notes"]),
+            "products": code_products,
         })
+
+    # ---- Home page lead story ---------------------------------------------
+    # The largest percent increase (same ranking and $1 floor as Movers), with
+    # its real payment limits for the last few quarters.
+    lead = None
+    if movers["pct"]["increases"]:
+        top = movers["pct"]["increases"][0]
+        lead = {**top,
+                "chart_labels": [quarter_label(q) for q in recent_qs],
+                "chart_values": [plain_decimal(v) or None for v in recent_limits(top["code"])]}
+    around = {
+        "rising": movers["pct"]["increases"][1:1 + AROUND_LEAD],
+        "falling": movers["pct"]["decreases"][:AROUND_LEAD],
+    }
 
     # ---- Write everything --------------------------------------------------
     if OUT.exists():
@@ -348,6 +567,16 @@ def main() -> int:
     (OUT / "codes").mkdir(parents=True)
     (OUT / "downloads").mkdir()
     shutil.copy2(STYLESHEET, OUT / "style.css")
+    shutil.copy2(CHART_SCRIPT, OUT / "charts.js")
+
+    # The header search box suggests codes as you type. Its list is written as
+    # a script (not JSON) so it also works when a page is opened from disk.
+    index = [[p["code"], p["description"], money(p["newest"]["payment_limit"]),
+              " ".join(p["other_descriptions"] + sorted({x["drug_name"] or "" for x in p["products"]}))]
+             for p in code_pages]
+    (OUT / "search-index.js").write_text(
+        "window.SEARCH_INDEX = " + json.dumps(index, ensure_ascii=False, separators=(",", ":")) + ";\n",
+        encoding="utf-8")
 
     env = make_env()
     common = {
@@ -355,6 +584,10 @@ def main() -> int:
         "latest_q": latest_q,
         "source_page": manifest["source_page"],
         "top_n": TOP_N,
+        "latest_posted": summary["posted"],
+        "pct_min_prior": PCT_MIN_PRIOR,
+        "n_codes_all": len(code_pages),
+        "rebate_page": REBATE_PAGE,
     }
 
     def write(path: str, template: str, **context) -> None:
@@ -362,12 +595,13 @@ def main() -> int:
         page = env.get_template(template).render(root=root, current_page=path, **common, **context)
         (OUT / path).write_text(page, encoding="utf-8")
 
-    write("index.html", "index.html", s=summary)
-    write("movers.html", "movers.html", s=summary, movers=movers,
-          pct_min_prior=PCT_MIN_PRIOR, n_below_floor=n_below_floor)
+    write("index.html", "index.html", s=summary, lead=lead, around=around, co=coinsurance)
+    write("coinsurance.html", "coinsurance.html", co=coinsurance)
+    write("movers.html", "movers.html", s=summary, movers=movers, n_below_floor=n_below_floor,
+          spark_quarters=SPARK_QUARTERS)
     write("changes.html", "changes.html", s=summary, new_codes=new_codes, dropped_codes=dropped_codes)
     for p in code_pages:
-        write(f"codes/{p['code']}.html", "code.html", p=p)
+        write(f"codes/{p['code']}.html", "code.html", p=p, co_usual=usual_co)
     write("search.html", "search.html", codes=code_pages)
 
     csv_path = OUT / "downloads" / CSV_NAME
@@ -384,7 +618,7 @@ def main() -> int:
                         r["file_version"], str(r["is_current"]).lower()])
     write("downloads.html", "downloads.html", csv_name=CSV_NAME, csv_rows=len(rows),
           csv_kb=round(csv_path.stat().st_size / 1024), first_q=quarters[0],
-          n_codes_all=len(code_pages), n_versions=len({(r["source_file"]) for r in rows}))
+          n_versions=len({(r["source_file"]) for r in rows}))
 
     write("about.html", "about.html", sales_q=quarter_offset(latest_q, -2),
           last_download=last_download.date(), built=date.today(), first_q=quarters[0])
@@ -395,6 +629,11 @@ def main() -> int:
     print(f"  up {summary['up']:,}, down {summary['down']:,}, unchanged {summary['same']:,}; "
           f"median change {percent(summary['median_pct'])}")
     print(f"  new {summary['n_new']:,}, dropped {summary['n_dropped']:,}")
+    print(f"  reduced coinsurance: {len(reduced):,} codes below the usual "
+          f"{plain_percent(str(usual_co))} ({usual_co_n:,} codes)")
+    if mismatch:
+        print(f"\nNOTE: these codes have a reduced coinsurance percentage or the CMS note "
+              f"'{INFLATION_NOTE}', but not both: {', '.join(mismatch)}")
     print(f"  left out of comparison: {summary['no_limit']} no limit, "
           f"{summary['unit_changed']} billing unit changed, {summary['zero_prior']} prior limit $0")
     return 0

@@ -1,38 +1,121 @@
 {% extends "base.html" %}
 {% block title %}Medicare Part B drug payment limits{% endblock %}
 {% block content %}
-<h1>Medicare Part B drug payment limits</h1>
-
-<p class="lede">
-The {{ s.latest_q|quarter }} payment limit file ({{ s.latest_q|months }}){% if s.posted %}, posted by CMS on {{ s.posted|long_date }},{% endif %} lists
-{{ s.n_codes|num }} HCPCS codes{% if s.n_no_limit %} ({{ s.n_no_limit|num }} without a payment limit){% endif %}. Compared with {{ s.prior_q|quarter }}, {{ s.up|num }} codes went up, {{ s.down|num }} went down and {{ s.same|num }} did not change,
-and the median change was {{ s.median_pct|percent }}.
-{{ s.n_new|num }} codes are new this quarter and {{ s.n_dropped|num }} were dropped.
-</p>
-
-<p class="note">
-The comparison covers the {{ s.compared|num }} codes that are in both quarters, have a payment limit in both, and kept the same billing unit.
-{% set left_out = [] %}
-{% if s.no_limit %}{% do left_out.append(s.no_limit|num ~ " with no payment limit in one of the quarters") %}{% endif %}
-{% if s.unit_changed %}{% do left_out.append(s.unit_changed|num ~ " whose billing unit changed") %}{% endif %}
-{% if s.zero_prior %}{% do left_out.append(s.zero_prior|num ~ " with a $0 limit last quarter") %}{% endif %}
-{% if left_out %}Left out: {{ left_out|join("; ") }}. {% endif %}
-{% if not s.posted %}CMS did not list a posting date for this file.{% endif %}
-</p>
-
-<form class="search-form" action="{{ root }}search.html" role="search">
-  <label for="q">Find a drug</label>
-  <div class="search-row">
-    <input id="q" name="q" type="search" placeholder="Code or drug name, e.g. J9035" autocomplete="off">
-    <button type="submit">Search</button>
-  </div>
-</form>
-
-<ul class="cards">
-  <li><a href="{{ root }}movers.html"><strong>Movers</strong><span>The {{ top_n }} biggest increases and decreases since {{ s.prior_q|quarter }}</span></a></li>
-  <li><a href="{{ root }}changes.html"><strong>New &amp; dropped</strong><span>{{ s.n_new|num }} new and {{ s.n_dropped|num }} dropped codes</span></a></li>
-  <li><a href="{{ root }}search.html"><strong>All codes</strong><span>Every code's payment limit history</span></a></li>
-  <li><a href="{{ root }}downloads.html"><strong>Downloads</strong><span>The full history as one CSV file</span></a></li>
-  <li><a href="{{ root }}about.html"><strong>About</strong><span>Where the data comes from and what it means</span></a></li>
+{% macro mover_list(rows, root) %}
+<ul class="mover-list">
+  {% for m in rows %}
+  <li><a href="{{ root }}codes/{{ m.code }}.html">
+    <span><span class="name">{{ m.description }}</span><span class="sub">{{ m.code }} · {{ m.latest|money }} per {{ m.dosage }}</span></span>
+    <span class="pct {{ 'up' if m.change > 0 else 'down' }}">{{ m.pct|arrow_percent }}</span>
+  </a></li>
+  {% endfor %}
 </ul>
+{% endmacro %}
+
+<div class="front">
+  {% if lead %}
+  <article class="lead">
+    <span class="kicker">Largest increase · {{ lead.code }}</span>
+    <div class="plate-num">
+      <span>{{ lead.pct|percent }}</span>
+      <span class="plate plate-c" aria-hidden="true">{{ lead.pct|percent }}</span>
+      <span class="plate plate-m" aria-hidden="true">{{ lead.pct|percent }}</span>
+    </div>
+    <h1>{{ lead.description }} payment limit rises {{ lead.pct|percent|replace("+", "") }}</h1>
+    <p class="dek">Medicare’s limit for {{ lead.code }} moves from {{ lead.prior|money }} to {{ lead.latest|money }} per {{ lead.dosage }},
+    the largest percent increase among the {{ s.compared|num }} codes compared with {{ s.prior_q|quarter }}.</p>
+    <div class="lead-chart"><canvas id="lead-chart" role="img" aria-label="Line chart of the {{ lead.code }} payment limit for the last {{ lead.chart_labels|length }} quarters."></canvas></div>
+    <a class="more" href="{{ root }}codes/{{ lead.code }}.html">Read the full record for {{ lead.code }} →</a>
+  </article>
+  {% else %}
+  <article class="lead"><h1>No payment limits went up this quarter.</h1></article>
+  {% endif %}
+
+  <aside class="side">
+    {% if around.rising %}
+    <div>
+      <h2>Also rising</h2>
+      {{ mover_list(around.rising, root) }}
+    </div>
+    {% endif %}
+    {% if around.falling %}
+    <div>
+      <h2>Largest decreases</h2>
+      {{ mover_list(around.falling, root) }}
+    </div>
+    {% endif %}
+    <a class="more" href="{{ root }}movers.html">All {{ top_n }} biggest movers →</a>
+  </aside>
+</div>
+
+<div class="figures">
+  <div class="figure"><span class="big up">{{ s.up|num }}</span><span class="label">codes went up from {{ s.prior_q|quarter }}</span></div>
+  <div class="figure"><span class="big down">{{ s.down|num }}</span><span class="label">codes went down</span></div>
+  <div class="figure"><span class="big">{{ s.median_pct|percent }}</span><span class="label">median change across the {{ s.compared|num }} codes compared</span></div>
+</div>
+
+{% if co.rows %}
+<section class="summary">
+  <div>
+    <span class="kicker">Inflation-adjusted coinsurance</span>
+    <h2>{{ co.rows|length|num }} drugs carry reduced coinsurance this quarter</h2>
+    <p class="lede">Most codes in the {{ latest_q|quarter }} file ({{ co.usual_n|num }} of {{ co.n_codes|num }}) carry a {{ co.usual|plain_percent }} coinsurance.
+    For these, CMS lists a lower, inflation-adjusted percentage. According to CMS, this happens when a Part B drug’s price rises faster than inflation
+    (<a href="{{ rebate_page }}">Medicare Inflation Rebate Program</a>). The lowest:</p>
+    <a class="more" href="{{ root }}coinsurance.html">All {{ co.rows|length|num }} drugs →</a>
+  </div>
+  <ul class="co-list">
+    {% for r in co.top %}
+    <li><a href="{{ root }}codes/{{ r.code }}.html">
+      <span><span class="name">{{ r.description }}</span><span class="sub">{{ r.code }} · per {{ r.dosage }}</span></span>
+      <span class="pct up">{{ r.co|plain_percent }}</span>
+      <span class="sub">{% if r.saves is not none %}patient pays {{ r.saves|cents }} less per unit{% else %}no payment limit given{% endif %}</span>
+    </a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="summary">
+  <div>
+    <span class="kicker cyan">This quarter</span>
+    <h2>{{ s.latest_q|quarter }} in one paragraph</h2>
+  </div>
+  <div>
+    <p class="lede">
+    The {{ s.latest_q|quarter }} payment limit file ({{ s.latest_q|months }}){% if s.posted %}, posted by CMS on {{ s.posted|long_date }},{% endif %} lists
+    {{ s.n_codes|num }} HCPCS codes{% if s.n_no_limit %} ({{ s.n_no_limit|num }} without a payment limit){% endif %}. Compared with {{ s.prior_q|quarter }}, {{ s.up|num }} codes went up, {{ s.down|num }} went down and {{ s.same|num }} did not change,
+    and the median change was {{ s.median_pct|percent }}.
+    {{ s.n_new|num }} codes are new this quarter and {{ s.n_dropped|num }} were dropped.
+    </p>
+    <p class="note">
+    The comparison covers the {{ s.compared|num }} codes that are in both quarters, have a payment limit in both, and kept the same billing unit.
+    {% set left_out = [] %}
+    {% if s.no_limit %}{% do left_out.append(s.no_limit|num ~ " with no payment limit in one of the quarters") %}{% endif %}
+    {% if s.unit_changed %}{% do left_out.append(s.unit_changed|num ~ " whose billing unit changed") %}{% endif %}
+    {% if s.zero_prior %}{% do left_out.append(s.zero_prior|num ~ " with a $0 limit last quarter") %}{% endif %}
+    {% if left_out %}Left out: {{ left_out|join("; ") }}. {% endif %}
+    The lead story and lists rank by percent change and skip codes under {{ pct_min_prior|money }} last quarter.
+    {% if not s.posted %}CMS did not list a posting date for this file.{% endif %}
+    </p>
+  </div>
+</section>
+
+<h2>Explore</h2>
+<ul class="cards">
+  <li><a href="{{ root }}movers.html"><span class="card-kicker">{{ s.prior_q|quarter }} → {{ s.latest_q|quarter }}</span><span class="card-title">Movers</span><span class="card-body">The {{ top_n }} biggest increases and decreases, by percent or dollars</span></a></li>
+  <li><a href="{{ root }}changes.html"><span class="card-kicker">{{ s.latest_q|quarter }}</span><span class="card-title">New &amp; dropped</span><span class="card-body">{{ s.n_new|num }} new and {{ s.n_dropped|num }} dropped codes</span></a></li>
+  <li><a href="{{ root }}search.html"><span class="card-kicker">{{ n_codes_all|num }} codes</span><span class="card-title">All codes</span><span class="card-body">Every code’s payment limit history</span></a></li>
+  <li><a href="{{ root }}downloads.html"><span class="card-kicker">CSV</span><span class="card-title">Downloads</span><span class="card-body">The full history as one file</span></a></li>
+  <li><a href="{{ root }}about.html"><span class="card-kicker">Method</span><span class="card-title">About</span><span class="card-body">Where the data comes from and what it means</span></a></li>
+</ul>
+{% endblock %}
+{% block scripts %}
+{% if lead %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ root }}charts.js"></script>
+<script>
+drawLimitChart(document.getElementById("lead-chart"), {{ lead.chart_labels|tojson }}, {{ lead.chart_values|tojson }}, { colorVar: "--color-accent-2" });
+</script>
+{% endif %}
 {% endblock %}

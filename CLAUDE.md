@@ -52,8 +52,10 @@ data/
   manifest.json      One entry per downloaded file: name, URL, quarter,
                      CMS posted date, download date, SHA-256 hash
 scripts/             Python scripts: download, load, build site
-site/                Website source: Jinja2 templates in site/templates/
-                     and the stylesheet site/style.css
+site/                Website source: Jinja2 templates in site/templates/,
+                     the stylesheet site/style.css and site/charts.js
+design/              Design reference (Broadsheet look). Layout and styling
+                     only: its sample numbers are not data
 public/              Generated static website (output of build_site.py;
                      not committed, rebuilt from data/asp.duckdb)
 commentary/          Written notes/analysis; any figures cited must be
