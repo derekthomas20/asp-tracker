@@ -3,8 +3,13 @@
 {% block title %}Biggest movers, {{ s.latest_q|quarter }}{% endblock %}
 {% block content %}
 <h1>Biggest movers: {{ s.prior_q|quarter }} to {{ s.latest_q|quarter }}</h1>
-<p>The {{ top_n }} largest increases and {{ top_n }} largest decreases in payment limit, ranked by percent change.
+<p>The {{ top_n }} largest increases and {{ top_n }} largest decreases in payment limit, ranked by percent or dollar change.
 Only the {{ s.compared|num }} codes with a payment limit in both quarters and the same billing unit are compared.</p>
+
+<div class="toggle" role="group" aria-label="Rank by" hidden>
+  <button type="button" data-view="pct" aria-pressed="true">Percent change</button>
+  <button type="button" data-view="dollars" aria-pressed="false">Dollar change</button>
+</div>
 
 <div class="filter">
   <label for="filter">Filter these tables</label>
@@ -12,20 +17,41 @@ Only the {{ s.compared|num }} codes with a payment limit in both quarters and th
   <p id="filter-status" class="note" aria-live="polite"></p>
 </div>
 
-<h2 id="increases">Biggest increases</h2>
-{% if increases %}{{ movers_table(increases, s, root) }}{% else %}<p>No payment limits went up this quarter.</p>{% endif %}
+{% set views = [
+  ("pct", "by percent change"),
+  ("dollars", "by dollar change"),
+] %}
+{% for key, label in views %}
+<section class="view" data-view="{{ key }}">
+  {% if key == "pct" %}
+  <p class="note">Codes with a {{ s.prior_q|quarter }} payment limit under {{ pct_min_prior|money }} are left out of this ranking, because a change of a few cents on a small amount
+  looks like a very large percent{% if n_below_floor %} ({{ n_below_floor|num }} codes that changed are left out){% endif %}. They are still in the dollar ranking.</p>
+  {% endif %}
+  <h2 id="increases-{{ key }}">Biggest increases {{ label }}</h2>
+  {% if movers[key].increases %}{{ movers_table(movers[key].increases, s, root) }}{% else %}<p>No payment limits went up this quarter.</p>{% endif %}
 
-<h2 id="decreases">Biggest decreases</h2>
-{% if decreases %}{{ movers_table(decreases, s, root) }}{% else %}<p>No payment limits went down this quarter.</p>{% endif %}
+  <h2 id="decreases-{{ key }}">Biggest decreases {{ label }}</h2>
+  {% if movers[key].decreases %}{{ movers_table(movers[key].decreases, s, root) }}{% else %}<p>No payment limits went down this quarter.</p>{% endif %}
+</section>
+{% endfor %}
 {% endblock %}
 {% block scripts %}
 <script>
 (function () {
+  // Without JavaScript both rankings show, one after the other.
+  var toggle = document.querySelector(".toggle");
+  var buttons = toggle.querySelectorAll("button");
+  var views = document.querySelectorAll("section.view");
   var input = document.getElementById("filter");
   var status = document.getElementById("filter-status");
-  var rows = document.querySelectorAll("table.filterable tbody tr");
-  input.addEventListener("input", function () {
+  var current = location.hash === "#dollars" ? "dollars" : "pct";
+
+  function activeRows() {
+    return document.querySelectorAll('section.view[data-view="' + current + '"] table.filterable tbody tr');
+  }
+  function applyFilter() {
     var q = input.value.trim().toLowerCase();
+    var rows = activeRows();
     var shown = 0;
     rows.forEach(function (tr) {
       var match = !q || tr.textContent.toLowerCase().indexOf(q) !== -1;
@@ -33,7 +59,21 @@ Only the {{ s.compared|num }} codes with a payment limit in both quarters and th
       if (match) shown++;
     });
     status.textContent = q ? shown + " of " + rows.length + " rows match." : "";
+  }
+  function show(view) {
+    current = view;
+    views.forEach(function (v) { v.hidden = v.getAttribute("data-view") !== view; });
+    buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-view") === view)); });
+    history.replaceState(null, "", view === "dollars" ? "#dollars" : location.pathname + location.search);
+    applyFilter();
+  }
+
+  toggle.hidden = false;
+  buttons.forEach(function (b) {
+    b.addEventListener("click", function () { show(b.getAttribute("data-view")); });
   });
+  input.addEventListener("input", applyFilter);
+  show(current);
 })();
 </script>
 {% endblock %}

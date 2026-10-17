@@ -93,6 +93,13 @@ button, .button {
   background: var(--accent); color: var(--accent-text); padding: 10px 16px; text-decoration: none; display: inline-block;
 }
 
+/* Movers: percent / dollar toggle */
+
+.toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; padding: 3px; margin: 16px 0 0; background: var(--surface); }
+.toggle button { background: transparent; color: var(--muted); padding: 8px 14px; }
+.toggle button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+.toggle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 /* Home page cards */
 
 .cards { list-style: none; padding: 0; margin: 24px 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); }

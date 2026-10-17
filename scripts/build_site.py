@@ -45,6 +45,10 @@ OUT = ROOT / "public"
 CSV_NAME = "asp-payment-limits-history.csv"
 
 TOP_N = 25  # rows in each movers table
+# Codes whose prior-quarter limit is below this are left out of the percent
+# ranking: a few cents of change on a tiny base looks like a huge percent.
+# They still appear in the dollar ranking.
+PCT_MIN_PRIOR = Decimal("1")
 
 NAV = [
     ("index.html", "Home"),
@@ -245,8 +249,20 @@ def main() -> int:
     # ---- Comparison with the prior quarter --------------------------------
     cmp = compare(latest, prior)
     compared = cmp["compared"]
-    increases = sorted((c for c in compared if c["change"] > 0), key=lambda c: -c["pct"])[:TOP_N]
-    decreases = sorted((c for c in compared if c["change"] < 0), key=lambda c: c["pct"])[:TOP_N]
+    ups = [c for c in compared if c["change"] > 0]
+    downs = [c for c in compared if c["change"] < 0]
+    pct_ok = lambda c: c["prior"] >= PCT_MIN_PRIOR
+    movers = {
+        "pct": {
+            "increases": sorted(filter(pct_ok, ups), key=lambda c: -c["pct"])[:TOP_N],
+            "decreases": sorted(filter(pct_ok, downs), key=lambda c: c["pct"])[:TOP_N],
+        },
+        "dollars": {
+            "increases": sorted(ups, key=lambda c: -c["change"])[:TOP_N],
+            "decreases": sorted(downs, key=lambda c: c["change"])[:TOP_N],
+        },
+    }
+    n_below_floor = sum(1 for c in compared if c["change"] != 0 and not pct_ok(c))
 
     def code_row(r: dict) -> dict:
         return {"code": r["hcpcs_code"], "description": display_text(r["short_description"]),
@@ -347,7 +363,8 @@ def main() -> int:
         (OUT / path).write_text(page, encoding="utf-8")
 
     write("index.html", "index.html", s=summary)
-    write("movers.html", "movers.html", s=summary, increases=increases, decreases=decreases)
+    write("movers.html", "movers.html", s=summary, movers=movers,
+          pct_min_prior=PCT_MIN_PRIOR, n_below_floor=n_below_floor)
     write("changes.html", "changes.html", s=summary, new_codes=new_codes, dropped_codes=dropped_codes)
     for p in code_pages:
         write(f"codes/{p['code']}.html", "code.html", p=p)
