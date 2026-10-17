@@ -103,3 +103,31 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
+
+## Automatic updates (GitHub Actions)
+
+`.github/workflows/update-site.yml` runs every Monday (09:17 UTC) and when
+started by hand from the repository's **Actions** tab ("Run workflow"). It:
+
+1. Installs Python and `requirements.txt` on a fresh Linux machine.
+2. Runs `scripts/scrape.py` and `scripts/fetch_groups.py`.
+3. Commits anything new in `raw/`, `data/manifest.json`,
+   `reference/biosimilar_groups/` and `reference/manifest.json` to `main`.
+   It stops before committing if any existing file in `raw/` or
+   `reference/biosimilar_groups/` would be changed or deleted.
+4. Runs `scripts/parse.py` and `scripts/build_site.py`, then publishes
+   `public/` to GitHub Pages with the official Pages actions.
+
+If a download step fails, files already saved are still committed and the
+site is still rebuilt from them; the run is then marked failed (red X) so
+GitHub emails the owner. Pull before working locally after a run has added
+files (`git pull`).
+
+`.gitattributes` keeps `raw/` and `reference/biosimilar_groups/` byte-for-byte
+(no line-ending conversion), so their SHA-256 hashes match the manifests on
+both Windows and the Linux runner.
+
+One-time setup: repository **Settings → Pages → Build and deployment →
+Source: GitHub Actions**. GitHub pauses scheduled workflows in a repository
+with no activity for 60 days; re-enable it from the Actions tab if that
+happens.

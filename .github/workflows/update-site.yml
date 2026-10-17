@@ -1,0 +1,104 @@
+# Check CMS and the biosimilar_groups sheet for new files, save them to the
+# repository, then rebuild the website and publish it on GitHub Pages.
+#
+# Runs every Monday, and whenever you press "Run workflow" on the Actions tab.
+# See "Automatic updates (GitHub Actions)" in CLAUDE.md.
+
+name: Update data and publish site
+
+on:
+  schedule:
+    - cron: "17 9 * * 1"   # Mondays 09:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit new files in raw/ and reference/ back to main
+  pages: write      # publish to GitHub Pages
+  id-token: write   # required by actions/deploy-pages
+
+# Never run two updates at once (they would both try to commit to main).
+concurrency:
+  group: update-site
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install requirements
+        run: pip install -r requirements.txt
+
+      # The two download steps may fail (a CMS or Google outage, a single
+      # broken link). Whatever they did save is still committed and the site
+      # is still rebuilt; the job is marked failed at the end so you hear
+      # about it.
+      - name: Download new or revised CMS files
+        id: scrape
+        continue-on-error: true
+        run: python scripts/scrape.py
+
+      - name: Download the biosimilar_groups sheet
+        id: groups
+        continue-on-error: true
+        run: python scripts/fetch_groups.py
+
+      - name: Commit new files to main
+        run: |
+          git add raw data/manifest.json reference/biosimilar_groups reference/manifest.json
+          if git diff --cached --quiet; then
+            echo "Nothing new to commit."
+            exit 0
+          fi
+          # raw/ and reference/biosimilar_groups/ only ever gain files.
+          # Stop if anything there would be changed, renamed or deleted.
+          changed=$(git diff --cached --name-status --no-renames -- raw reference/biosimilar_groups | grep -v '^A' || true)
+          if [ -n "$changed" ]; then
+            echo "STOPPED: these existing files would be changed or deleted:"
+            echo "$changed"
+            exit 1
+          fi
+          git diff --cached --name-status
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Add new source files (automatic update)"
+          git push origin HEAD:main
+
+      - name: Build the database
+        run: python scripts/parse.py
+
+      - name: Build the website
+        run: python scripts/build_site.py
+
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the website
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+
+      - name: Publish to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Report download problems
+        if: steps.scrape.outcome == 'failure' || steps.groups.outcome == 'failure'
+        run: |
+          echo "scrape.py: ${{ steps.scrape.outcome }}"
+          echo "fetch_groups.py: ${{ steps.groups.outcome }}"
+          echo "The site was published with the files already saved. Open the failed step above to see why."
+          exit 1
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}

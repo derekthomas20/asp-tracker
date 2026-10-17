@@ -1,3 +1,5 @@
 # Source snapshots must stay byte-for-byte as downloaded so their SHA-256
 # matches reference/manifest.json: no line-ending conversion.
 reference/biosimilar_groups/** -text
+# CMS ZIPs are binary; data/manifest.json records their SHA-256.
+raw/** binary
