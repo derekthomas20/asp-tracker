@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ p.code }} {{ p.description }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ root }}search.html">All codes</a></p>
+<h1><span class="code">{{ p.code }}</span> {{ p.description }}</h1>
+
+<dl class="facts">
+  <div><dt>Latest payment limit</dt><dd>{{ p.newest.payment_limit|money }} <span class="muted">({{ p.last_q|quarter }})</span></dd></div>
+  <div><dt>Billing unit</dt><dd>{{ p.dosage }}</dd></div>
+  <div><dt>In the files</dt><dd>{{ p.first_q|quarter }} to {{ p.last_q|quarter }}</dd></div>
+</dl>
+
+{% if not p.in_latest %}
+<p class="callout">This code is not in the latest file ({{ latest_q|quarter }}). It was last listed in {{ p.last_q|quarter }}.</p>
+{% endif %}
+{% if p.unit_changed %}
+<p class="callout">The billing unit for this code changed over time, so payment limits from different quarters may not be directly comparable. Check the billing unit column below.</p>
+{% endif %}
+{% if p.other_descriptions %}
+<p class="note">CMS has also described this code as: {{ p.other_descriptions|join("; ") }}.</p>
+{% endif %}
+
+<h2>Payment limit by quarter</h2>
+<div class="chart"><canvas id="chart" role="img" aria-label="Line chart of the {{ p.code }} payment limit by quarter. The same numbers are in the table below."></canvas></div>
+<p class="note">Gaps mean the code was not in that quarter's file, or CMS gave no payment limit (shown as N/A in the table).</p>
+
+<div class="table-wrap">
+<table class="stack">
+  <thead><tr><th>Quarter</th><th class="num">Payment limit</th><th class="num">Change</th><th>Billing unit</th><th>Description</th><th>Source file</th></tr></thead>
+  <tbody>
+  {% for h in p.history %}
+    <tr{% if not h.is_current %} class="superseded"{% endif %}>
+      <td data-label="Quarter">{{ h.quarter|quarter }}{% if not h.is_current %} <span class="tag">earlier version</span>{% endif %}</td>
+      <td data-label="Payment limit" class="num">{{ h.limit|money }}</td>
+      <td data-label="Change" class="num{% if h.change %} {{ 'up' if h.change > 0 else 'down' }}{% endif %}">{% if h.change is not none %}{{ h.change|signed_money }}{% else %}<span class="muted">&ndash;</span>{% endif %}</td>
+      <td data-label="Billing unit">{{ h.dosage }}</td>
+      <td data-label="Description">{{ h.description }}</td>
+      <td data-label="Source file">{% if h.source_url %}<a href="{{ h.source_url }}">v{{ h.version }}</a>{% else %}v{{ h.version }}{% endif %}{% if h.posted %}, posted {{ h.posted|long_date }}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="note">"Change" is the difference from the previous quarter, shown only when both quarters have a payment limit and the billing unit is the same.</p>
+
+<h2>CMS source files</h2>
+<ul class="sources">
+{% for h in p.sources %}
+  <li>{{ h.quarter|quarter }}{% if not h.is_current %} (earlier version){% endif %}:
+    {% if h.source_url %}<a href="{{ h.source_url }}">{{ h.source_name }}</a>{% else %}{{ h.source_name }}{% endif %}
+    {% if h.posted %}<span class="muted">posted {{ h.posted|long_date }}</span>{% endif %}</li>
+{% endfor %}
+</ul>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  if (!window.Chart) return;
+  var labels = {{ p.chart_labels|tojson }};
+  var values = {{ p.chart_values|tojson }}.map(function (v) { return v === null ? null : Number(v); });
+  var css = getComputedStyle(document.documentElement);
+  var accent = css.getPropertyValue("--accent").trim();
+  var muted = css.getPropertyValue("--muted").trim();
+  var grid = css.getPropertyValue("--border").trim();
+  var dollars = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 3 });
+  new Chart(document.getElementById("chart"), {
+    type: "line",
+    data: { labels: labels, datasets: [{ label: "Payment limit", data: values, borderColor: accent,
+      backgroundColor: accent, pointRadius: 3, borderWidth: 2, spanGaps: false }] },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: function (c) { return dollars.format(c.parsed.y); } } } },
+      scales: {
+        x: { ticks: { color: muted, maxRotation: 0, autoSkipPadding: 12 }, grid: { display: false } },
+        y: { ticks: { color: muted, callback: function (v) { return dollars.format(v); } }, grid: { color: grid } }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

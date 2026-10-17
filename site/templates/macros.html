@@ -1,0 +1,44 @@
+{# Table of codes with a payment limit. rows: code, description, dosage, limit #}
+{% macro code_table(rows, limit_heading, root) %}
+<div class="table-wrap">
+<table class="stack">
+  <thead><tr><th>Code</th><th>Description</th><th>Billing unit</th><th class="num">{{ limit_heading }}</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td data-label="Code"><a href="{{ root }}codes/{{ r.code }}.html">{{ r.code }}</a></td>
+      <td data-label="Description">{{ r.description }}</td>
+      <td data-label="Billing unit">{{ r.dosage }}</td>
+      <td data-label="{{ limit_heading }}" class="num">{{ r.limit|money }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endmacro %}
+
+{# Movers table. rows: code, description, dosage, prior, latest, change, pct #}
+{% macro movers_table(rows, s, root) %}
+<div class="table-wrap">
+<table class="stack filterable">
+  <thead><tr>
+    <th>Code</th><th>Description</th><th>Billing unit</th>
+    <th class="num">{{ s.prior_q|quarter }}</th><th class="num">{{ s.latest_q|quarter }}</th>
+    <th class="num">Change</th><th class="num">% change</th>
+  </tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td data-label="Code"><a href="{{ root }}codes/{{ r.code }}.html">{{ r.code }}</a></td>
+      <td data-label="Description">{{ r.description }}</td>
+      <td data-label="Billing unit">{{ r.dosage }}</td>
+      <td data-label="{{ s.prior_q|quarter }}" class="num">{{ r.prior|money }}</td>
+      <td data-label="{{ s.latest_q|quarter }}" class="num">{{ r.latest|money }}</td>
+      <td data-label="Change" class="num {{ 'up' if r.change > 0 else 'down' }}">{{ r.change|signed_money }}</td>
+      <td data-label="% change" class="num {{ 'up' if r.change > 0 else 'down' }}">{{ r.pct|percent }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endmacro %}

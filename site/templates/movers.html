@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "macros.html" import movers_table %}
+{% block title %}Biggest movers, {{ s.latest_q|quarter }}{% endblock %}
+{% block content %}
+<h1>Biggest movers: {{ s.prior_q|quarter }} to {{ s.latest_q|quarter }}</h1>
+<p>The {{ top_n }} largest increases and {{ top_n }} largest decreases in payment limit, ranked by percent change.
+Only the {{ s.compared|num }} codes with a payment limit in both quarters and the same billing unit are compared.</p>
+
+<div class="filter">
+  <label for="filter">Filter these tables</label>
+  <input id="filter" type="search" placeholder="Code or drug name" autocomplete="off">
+  <p id="filter-status" class="note" aria-live="polite"></p>
+</div>
+
+<h2 id="increases">Biggest increases</h2>
+{% if increases %}{{ movers_table(increases, s, root) }}{% else %}<p>No payment limits went up this quarter.</p>{% endif %}
+
+<h2 id="decreases">Biggest decreases</h2>
+{% if decreases %}{{ movers_table(decreases, s, root) }}{% else %}<p>No payment limits went down this quarter.</p>{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var input = document.getElementById("filter");
+  var status = document.getElementById("filter-status");
+  var rows = document.querySelectorAll("table.filterable tbody tr");
+  input.addEventListener("input", function () {
+    var q = input.value.trim().toLowerCase();
+    var shown = 0;
+    rows.forEach(function (tr) {
+      var match = !q || tr.textContent.toLowerCase().indexOf(q) !== -1;
+      tr.hidden = !match;
+      if (match) shown++;
+    });
+    status.textContent = q ? shown + " of " + rows.length + " rows match." : "";
+  });
+})();
+</script>
+{% endblock %}

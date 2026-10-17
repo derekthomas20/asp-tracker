@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Search codes{% endblock %}
+{% block content %}
+<h1>Search</h1>
+<form class="search-form" id="search-form" role="search">
+  <label for="q">Code or drug name</label>
+  <div class="search-row">
+    <input id="q" name="q" type="search" placeholder="e.g. J9035 or bevacizumab" autocomplete="off" autofocus>
+    <button type="submit">Go</button>
+  </div>
+  <p class="note">Press Enter to open the first match.</p>
+</form>
+<p id="count" class="note" aria-live="polite">{{ codes|length|num }} codes</p>
+
+<ul class="code-list" id="results">
+{% for c in codes %}
+  <li data-search="{{ c.code|lower }} {{ c.description|lower }} {{ c.other_descriptions|join(' ')|lower }}">
+    <a href="{{ root }}codes/{{ c.code }}.html"><span class="code">{{ c.code }}</span> {{ c.description }}</a>
+    {% if not c.in_latest %}<span class="tag">not in {{ latest_q|quarter }}</span>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var input = document.getElementById("q");
+  var items = Array.prototype.slice.call(document.querySelectorAll("#results li"));
+  var count = document.getElementById("count");
+  function codeOf(li) { return li.querySelector(".code").textContent; }
+  function filter() {
+    var words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    var shown = 0;
+    items.forEach(function (li) {
+      var text = li.getAttribute("data-search");
+      var match = words.every(function (w) { return text.indexOf(w) !== -1; });
+      li.hidden = !match;
+      if (match) shown++;
+    });
+    count.textContent = words.length ? shown + " of " + items.length + " codes match" : items.length + " codes";
+  }
+  function exactMatch() {
+    var q = input.value.trim().toUpperCase();
+    return items.filter(function (li) { return codeOf(li) === q; })[0];
+  }
+  input.addEventListener("input", filter);
+  document.getElementById("search-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    filter();
+    var li = exactMatch() || items.filter(function (li) { return !li.hidden; })[0];
+    if (li) window.location.href = li.querySelector("a").href;
+  });
+  // Searches from the home page arrive as search.html?q=...
+  var q = new URLSearchParams(window.location.search).get("q");
+  if (q) {
+    input.value = q;
+    filter();
+    var exact = exactMatch();
+    if (exact) window.location.replace(exact.querySelector("a").href);
+  }
+})();
+</script>
+{% endblock %}

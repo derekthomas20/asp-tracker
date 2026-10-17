@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Downloads{% endblock %}
+{% block content %}
+<h1>Downloads</h1>
+<p><a class="button" href="{{ root }}downloads/{{ csv_name }}" download>Download {{ csv_name }}</a>
+<span class="muted">({{ csv_rows|num }} rows, about {{ csv_kb|num }} KB)</span></p>
+
+<p>Every payment limit row from every CMS file loaded, {{ first_q|quarter }} to {{ latest_q|quarter }}, covering {{ n_codes_all|num }} HCPCS codes from {{ n_versions|num }} CMS files.
+When CMS re-posted a revised file for a quarter, rows from every version are included, and <code>is_current</code> marks the newest.</p>
+
+<h2>Columns</h2>
+<dl class="columns">
+  <dt><code>effective_quarter</code></dt><dd>Quarter the payment limit applies to, e.g. {{ latest_q }}.</dd>
+  <dt><code>hcpcs_code</code></dt><dd>HCPCS code.</dd>
+  <dt><code>short_description</code></dt><dd>CMS short descriptor, exactly as in the file.</dd>
+  <dt><code>hcpcs_dosage</code></dt><dd>HCPCS code dosage (the billing unit the limit is for).</dd>
+  <dt><code>payment_limit</code></dt><dd>Payment limit in dollars. Blank where CMS gave no limit.</dd>
+  <dt><code>payment_limit_as_published</code></dt><dd>The payment limit text exactly as it appears in the CMS file (for example <code>N/A</code>).</dd>
+  <dt><code>source_file</code></dt><dd>The CMS ZIP file the row came from.</dd>
+  <dt><code>source_url</code></dt><dd>Where CMS published that file.</dd>
+  <dt><code>cms_posted_date</code></dt><dd>Date CMS posted that file, where the CMS page lists one.</dd>
+  <dt><code>file_version</code></dt><dd>1 for the first file posted for a quarter, 2 for the first revision, and so on.</dd>
+  <dt><code>is_current</code></dt><dd><code>true</code> for rows from the newest version of each quarter's file.</dd>
+</dl>
+{% endblock %}

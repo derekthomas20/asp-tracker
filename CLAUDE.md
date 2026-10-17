@@ -52,7 +52,10 @@ data/
   manifest.json      One entry per downloaded file: name, URL, quarter,
                      CMS posted date, download date, SHA-256 hash
 scripts/             Python scripts: download, load, build site
-site/                Generated static website (output of the build script)
+site/                Website source: Jinja2 templates in site/templates/
+                     and the stylesheet site/style.css
+public/              Generated static website (output of build_site.py;
+                     not committed, rebuilt from data/asp.duckdb)
 commentary/          Written notes/analysis; any figures cited must be
                      produced by scripts, not typed in
 .github/workflows/   GitHub Actions that run the scripts on a schedule
@@ -67,8 +70,9 @@ requirements.txt     Python dependencies (keep short)
 2. **Load** (`scripts/`): read each ZIP in `raw/` and insert rows into
    `data/asp.duckdb` with all required fields above. Loading must be
    repeatable: running it twice must not create duplicate rows.
-3. **Build** (`scripts/`): query the database and generate the pages in
-   `site/`. All numbers on the site come from these queries.
+3. **Build** (`scripts/build_site.py`): query the database and generate the
+   pages in `public/` from the templates in `site/`. All numbers on the site
+   come from these queries.
 
 ## Working conventions
 

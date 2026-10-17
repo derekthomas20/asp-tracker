@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "macros.html" import code_table %}
+{% block title %}New and dropped codes, {{ s.latest_q|quarter }}{% endblock %}
+{% block content %}
+<h1>New and dropped codes: {{ s.latest_q|quarter }}</h1>
+<p>Codes in the {{ s.latest_q|quarter }} file that were not in the {{ s.prior_q|quarter }} file, and the other way round.
+A code can leave the file for many reasons, such as being replaced by a new code. This page does not say why.</p>
+
+<h2 id="new">New in {{ s.latest_q|quarter }} ({{ s.n_new|num }})</h2>
+{% if new_codes %}{{ code_table(new_codes, "Payment limit", root) }}{% else %}<p>No new codes this quarter.</p>{% endif %}
+
+<h2 id="dropped">Dropped since {{ s.prior_q|quarter }} ({{ s.n_dropped|num }})</h2>
+{% if dropped_codes %}{{ code_table(dropped_codes, s.prior_q|quarter ~ " limit", root) }}{% else %}<p>No codes were dropped this quarter.</p>{% endif %}
+{% endblock %}

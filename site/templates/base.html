@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{% endblock %} · ASP Tracker</title>
+<meta name="description" content="Medicare Part B drug payment limits from the CMS quarterly ASP pricing files.">
+<link rel="stylesheet" href="{{ root }}style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="{{ root }}index.html">ASP Tracker</a>
+    <nav aria-label="Main">
+      {% for href, label in nav %}
+      <a href="{{ root }}{{ href }}"{% if href == current_page %} aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+{% block content %}{% endblock %}
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Built from the <a href="{{ source_page }}">CMS Medicare Part B ASP pricing files</a>. Latest quarter: {{ latest_q|quarter }}.
+    Not affiliated with CMS. Listing in the file does not mean Medicare covers a drug. <a href="{{ root }}about.html">About this data</a></p>
+  </div>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

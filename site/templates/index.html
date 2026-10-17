@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Medicare Part B drug payment limits{% endblock %}
+{% block content %}
+<h1>Medicare Part B drug payment limits</h1>
+
+<p class="lede">
+The {{ s.latest_q|quarter }} payment limit file ({{ s.latest_q|months }}){% if s.posted %}, posted by CMS on {{ s.posted|long_date }},{% endif %} lists
+{{ s.n_codes|num }} HCPCS codes{% if s.n_no_limit %} ({{ s.n_no_limit|num }} without a payment limit){% endif %}. Compared with {{ s.prior_q|quarter }}, {{ s.up|num }} codes went up, {{ s.down|num }} went down and {{ s.same|num }} did not change,
+and the median change was {{ s.median_pct|percent }}.
+{{ s.n_new|num }} codes are new this quarter and {{ s.n_dropped|num }} were dropped.
+</p>
+
+<p class="note">
+The comparison covers the {{ s.compared|num }} codes that are in both quarters, have a payment limit in both, and kept the same billing unit.
+{% set left_out = [] %}
+{% if s.no_limit %}{% do left_out.append(s.no_limit|num ~ " with no payment limit in one of the quarters") %}{% endif %}
+{% if s.unit_changed %}{% do left_out.append(s.unit_changed|num ~ " whose billing unit changed") %}{% endif %}
+{% if s.zero_prior %}{% do left_out.append(s.zero_prior|num ~ " with a $0 limit last quarter") %}{% endif %}
+{% if left_out %}Left out: {{ left_out|join("; ") }}. {% endif %}
+{% if not s.posted %}CMS did not list a posting date for this file.{% endif %}
+</p>
+
+<form class="search-form" action="{{ root }}search.html" role="search">
+  <label for="q">Find a drug</label>
+  <div class="search-row">
+    <input id="q" name="q" type="search" placeholder="Code or drug name, e.g. J9035" autocomplete="off">
+    <button type="submit">Search</button>
+  </div>
+</form>
+
+<ul class="cards">
+  <li><a href="{{ root }}movers.html"><strong>Movers</strong><span>The {{ top_n }} biggest increases and decreases since {{ s.prior_q|quarter }}</span></a></li>
+  <li><a href="{{ root }}changes.html"><strong>New &amp; dropped</strong><span>{{ s.n_new|num }} new and {{ s.n_dropped|num }} dropped codes</span></a></li>
+  <li><a href="{{ root }}search.html"><strong>All codes</strong><span>Every code's payment limit history</span></a></li>
+  <li><a href="{{ root }}downloads.html"><strong>Downloads</strong><span>The full history as one CSV file</span></a></li>
+  <li><a href="{{ root }}about.html"><strong>About</strong><span>Where the data comes from and what it means</span></a></li>
+</ul>
+{% endblock %}

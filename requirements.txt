@@ -1,2 +1,5 @@
 # scripts/scrape.py uses only the Python standard library.
 duckdb==1.5.6
+# scripts/build_site.py renders the website with Jinja2 templates.
+Jinja2==3.1.6
+MarkupSafe==3.0.4
