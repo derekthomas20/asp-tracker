@@ -56,6 +56,10 @@ site/                Website source: Jinja2 templates in site/templates/,
                      the stylesheet site/style.css and site/charts.js
 design/              Design reference (Broadsheet look). Layout and styling
                      only: its sample numbers are not data
+reference/
+  biosimilar_groups/ Snapshots of the owner's biosimilar_groups Google Sheet
+                     (saved by fetch_groups.py). Never modified or deleted.
+  manifest.json      One entry per snapshot: path, fetch time, SHA-256
 public/              Generated static website (output of build_site.py;
                      not committed, rebuilt from data/asp.duckdb)
 commentary/          Written notes/analysis; any figures cited must be
@@ -69,6 +73,11 @@ requirements.txt     Python dependencies (keep short)
 1. **Download** (`scripts/`): check the CMS page, download any new or revised
    ZIP into `raw/`, and record it in `data/manifest.json` with its SHA-256
    hash. If a file's hash matches one already in the manifest, skip it.
+   `scripts/fetch_groups.py` does the same for the owner's biosimilar_groups
+   Google Sheet (shared "anyone with the link can view"), saving a new
+   snapshot in `reference/biosimilar_groups/` only when its contents change.
+   The sheet only says which codes belong together; it holds no prices, and
+   only rows marked `verified = yes` are published.
 2. **Load** (`scripts/`): read each ZIP in `raw/` and insert rows into
    `data/asp.duckdb` with all required fields above. Loading must be
    repeatable: running it twice must not create duplicate rows.

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Biosimilars, {{ latest_q|quarter }}{% endblock %}
+{% block content %}
+<span class="kicker">Biosimilars · {{ latest_q|quarter }}</span>
+<h1>Reference products and their biosimilars</h1>
+<p class="dek">Each biosimilar’s {{ latest_q|quarter }} payment limit compared with its reference product, per billing unit.</p>
+<p class="note">Prices are from the CMS payment limit files. Which biosimilar goes with which reference product comes from the site’s own
+biosimilar groups list, not from CMS; only entries checked by hand are shown.</p>
+
+<div class="table-wrap">
+<table class="stack">
+  <thead><tr><th>Molecule</th><th>Reference product</th><th class="num">Biosimilars</th><th class="num">Average vs. reference</th><th>Lowest</th></tr></thead>
+  <tbody>
+  {% for g in groups %}
+    <tr>
+      <td data-label="Molecule"><a class="name" href="{{ root }}biosimilars/{{ g.slug }}.html">{{ g.molecule }}</a></td>
+      <td data-label="Reference product">{{ g.ref.name }} <span class="muted">{{ g.ref.code }}</span></td>
+      <td data-label="Biosimilars" class="num">{{ g.bios|length }}</td>
+      <td data-label="Average vs. reference" class="num {% if g.avg_vs_ref is not none %}{{ 'up' if g.avg_vs_ref > 0 else 'down' }}{% endif %}">{{ g.avg_vs_ref|arrow_percent }}</td>
+      <td data-label="Lowest">{% if g.lowest %}{{ g.lowest.name }} <span class="down">{{ g.lowest.vs_ref|arrow_percent }}</span>{% else %}<span class="muted">–</span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="note">Average vs. reference is the simple average of each biosimilar’s percent difference from the reference product’s payment limit.
+Groupings from {{ groups_source|join(", ") }}.</p>
+{% endblock %}

@@ -19,7 +19,11 @@
 
   --color-accent-100: #e9f8ff;
   --color-accent-200: #cbeeff;
+  --color-accent-300: #99e0ff;
+  --color-accent-400: #62c5ee;
+  --color-accent-500: #38a6cf;
   --color-accent-600: #1186ac;
+  --color-accent-900: #0a303e;
   --color-accent-700: #006786;
   --color-accent-800: #004961;
   --color-accent-2-100: #fff1f4;
@@ -233,6 +237,15 @@ button:hover, .button:hover { background: var(--color-accent-600); color: var(--
 .co-list a > .sub { text-align: right; color: var(--color-neutral-800); }
 .basis { font-size: 17px; font-weight: 600; line-height: 1.3; }
 .reduced-line { font-size: 15px; line-height: 1.45; }
+
+/* Biosimilar pages */
+.group-links { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); font-size: 15px; margin: 0 0 var(--space-6); }
+.group-links a { color: var(--color-text); text-decoration: none; }
+.group-links a:hover { color: var(--color-accent); }
+.group-links a[aria-current="page"] { color: var(--color-accent-700); font-weight: 600; }
+.legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px var(--space-4); font-size: 13px; }
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 14px; height: 3px; border-radius: 1px; display: inline-block; }
 
 /* Cards */
 .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }

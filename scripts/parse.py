@@ -9,6 +9,9 @@ builds these tables:
     crosswalks       NDC-HCPCS crosswalks (ASP, NOC, OPPS, AWP, COVID-19)
     source_files     one row per CSV loaded: where it came from, its
                      encoding, header row, and how many rows were read
+    biosimilar_groups  the site owner's biosimilar/reference product
+                     groupings, from the newest snapshot saved by
+                     scripts/fetch_groups.py (not a CMS file; no prices)
 
 When CMS has posted more than one version of a file for the same quarter,
 every version is loaded and the newest one has is_current = true.
@@ -19,10 +22,12 @@ only read, never changed.
 
 Usage (from the repository root):
     .venv\\Scripts\\python scripts/parse.py
+    .venv\\Scripts\\python scripts/parse.py --groups-file path\\to\\export.csv
 """
 
 from __future__ import annotations
 
+import argparse
 import csv
 import io
 import json
@@ -308,7 +313,55 @@ def create_table(con, spec: TableSpec, csv_path: Path) -> None:
     )
 
 
+GROUPS_MANIFEST = ROOT / "reference" / "manifest.json"
+GROUP_COLUMNS = ["molecule", "hcpcs", "role", "brand_names", "cms_description", "qualifies_8pct",
+                 "valid_from", "valid_to", "verified", "source", "notes"]
+
+
+def read_groups(override: str | None) -> tuple[str | None, list[tuple]]:
+    """Read the newest biosimilar_groups snapshot (or the file given with
+    --groups-file). Returns (file name, rows). Stops on anything unexpected."""
+    if override:
+        path = Path(override)
+    elif GROUPS_MANIFEST.exists():
+        snapshots = json.loads(GROUPS_MANIFEST.read_text(encoding="utf-8"))["snapshots"]
+        if not snapshots:
+            return None, []
+        path = ROOT / snapshots[-1]["local_path"]
+    else:
+        return None, []
+    name = path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else str(path)
+
+    rows = list(csv.reader(io.StringIO(path.read_bytes().decode("utf-8-sig"))))
+    if not rows or [clean(c).lower() for c in rows[0]] != GROUP_COLUMNS:
+        raise FormatError(f"{name}: columns are not {GROUP_COLUMNS}")
+    out, problems = [], []
+    for line_no, row in enumerate(rows[1:], start=2):
+        row = [clean(c) for c in row] + [""] * (len(GROUP_COLUMNS) - len(row))
+        if not any(row):
+            continue
+        v = dict(zip(GROUP_COLUMNS, row))
+        if not re.fullmatch(r"[A-Z0-9]{5}", v["hcpcs"]):
+            problems.append(f"line {line_no}: hcpcs {v['hcpcs']!r} is not a 5-character code")
+        if v["role"].lower() not in ("reference", "biosimilar"):
+            problems.append(f"line {line_no}: role {v['role']!r} is not 'reference' or 'biosimilar'")
+        if v["verified"].lower() not in ("yes", "no", ""):
+            problems.append(f"line {line_no}: verified {v['verified']!r} is not 'yes' or 'no'")
+        if not v["molecule"]:
+            problems.append(f"line {line_no}: molecule is blank")
+        out.append((v["molecule"], v["hcpcs"], v["role"].lower(), v["brand_names"],
+                    v["cms_description"], v["qualifies_8pct"], v["valid_from"], v["valid_to"],
+                    v["verified"].lower() == "yes", v["source"], v["notes"], name, line_no))
+    if problems:
+        raise FormatError(f"{name}:\n    " + "\n    ".join(problems))
+    return name, out
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--groups-file", help="load this biosimilar groups CSV instead of the newest "
+                        "snapshot (for checking a sheet export before fetching it)")
+    args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
 
@@ -399,6 +452,23 @@ def main() -> int:
     """)
     con.executemany("INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", source_rows)
 
+    try:
+        groups_file, group_rows = read_groups(args.groups_file)
+    except FormatError as err:
+        con.close()
+        tmp_db.unlink(missing_ok=True)
+        print(f"STOPPED: biosimilar groups file could not be read. Nothing was written.\n  {err}")
+        return 1
+    con.execute("""
+        CREATE TABLE biosimilar_groups (
+            molecule VARCHAR, hcpcs_code VARCHAR, role VARCHAR, brand_names VARCHAR,
+            cms_description VARCHAR, qualifies_8pct VARCHAR, valid_from VARCHAR,
+            valid_to VARCHAR, verified BOOLEAN, source VARCHAR, notes VARCHAR,
+            source_file VARCHAR, source_row INTEGER)
+    """)
+    if group_rows:
+        con.executemany("INSERT INTO biosimilar_groups VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", group_rows)
+
     # Sanity checks: every number must have come through intact.
     lost = con.execute("""
         SELECT count(*) FROM payment_limits
@@ -419,6 +489,11 @@ def main() -> int:
     for name, n in counts.items():
         print(f"  {name:<16} {n:>8,} rows")
     print(f"  source_files     {len(source_rows):>8,} CSV files")
+    if groups_file:
+        n_verified = sum(1 for r in group_rows if r[8])
+        print(f"  biosimilar_groups {len(group_rows):>7,} rows ({n_verified} verified) from {groups_file}")
+    else:
+        print("  biosimilar_groups       0 rows (no snapshot yet; run scripts/fetch_groups.py)")
     if lost:
         print(f"\nNOTE: {lost} payment limit values were not numbers; the original text is "
               f"kept in payment_limit_text.")

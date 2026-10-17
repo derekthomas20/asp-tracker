@@ -9,6 +9,8 @@ Pages written to public/:
     movers.html         biggest increases and decreases vs the prior quarter
     changes.html        codes new or dropped this quarter
     coinsurance.html    codes with reduced (inflation-adjusted) coinsurance
+    biosimilars.html    reference products and their biosimilars, grouped by
+    biosimilars/X.html  the owner's sheet (verified rows only); prices from CMS
     codes/XXXXX.html    one page per HCPCS code: chart, products (NDCs),
                         table, CMS source links
     search.html         find a code by code or drug name
@@ -61,6 +63,10 @@ PCT_MIN_PRIOR = Decimal("1")
 SPARK_QUARTERS = 8  # quarters shown in the small trend lines and home chart
 AROUND_LEAD = 6  # rows in the home page "Also rising" / "Largest decreases" lists
 IRA_LIST = 8  # rows in the home page reduced coinsurance list
+# Chart colors for biosimilars (the design's cyan ramp); the reference is ink.
+GROUP_SHADES = ["--color-accent-400", "--color-accent-500", "--color-accent-600",
+                "--color-accent-700", "--color-accent-800", "--color-accent-300",
+                "--color-accent-900"]
 REBATE_PAGE = ("https://www.cms.gov/initiatives/medicare-prescription-drug-affordability/"
                "overview/medicare-inflation-rebate-program")
 
@@ -273,6 +279,102 @@ def payment_basis(r: dict) -> list[str]:
     return out
 
 
+def load_groups(con) -> list[dict]:
+    """Rows of the owner's biosimilar groups sheet (see scripts/fetch_groups.py)."""
+    cur = con.execute("SELECT * FROM biosimilar_groups ORDER BY source_row")
+    names = [d[0] for d in cur.description]
+    return [dict(zip(names, r)) for r in cur.fetchall()]
+
+
+def slugify(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
+def build_groups(group_rows: list[dict], latest: dict[str, dict], recent_limits, warn) -> list[dict]:
+    """Turn verified sheet rows into one comparison per molecule, using CMS
+    payment limits for every price. Anything that can't be compared is left
+    out and reported through warn()."""
+    verified = [g for g in group_rows if g["verified"]]
+    waiting = [g for g in group_rows if not g["verified"]]
+    if waiting:
+        per_molecule = Counter(g["molecule"] for g in waiting)
+        warn(f"{len(waiting)} sheet rows are not verified and are not published: "
+             + ", ".join(f"{m} ({n})" for m, n in sorted(per_molecule.items())))
+
+    by_molecule: dict[str, list[dict]] = {}
+    for g in verified:
+        r = latest.get(g["hcpcs_code"])
+        if r is None:
+            warn(f"{g['hcpcs_code']} ({g['molecule']}) is verified but not in the latest CMS file; left out.")
+            continue
+        if g["cms_description"] and g["cms_description"] != r["short_description"]:
+            warn(f"{g['hcpcs_code']}: sheet description {g['cms_description']!r} differs from "
+                 f"CMS {r['short_description']!r}.")
+        by_molecule.setdefault(g["molecule"], []).append({**g, "row": r})
+
+    groups = []
+    for molecule, members in sorted(by_molecule.items()):
+        refs = [m for m in members if m["role"] == "reference"]
+        bios = [m for m in members if m["role"] == "biosimilar"]
+        if len(refs) != 1 or not bios:
+            warn(f"{molecule}: needs exactly one verified reference and at least one verified "
+                 f"biosimilar (has {len(refs)} and {len(bios)}); not published.")
+            continue
+        ref = refs[0]
+        ref_limit, ref_unit = ref["row"]["payment_limit"], ref["row"]["hcpcs_dosage"]
+
+        def entry(m: dict) -> dict:
+            r = m["row"]
+            limit = r["payment_limit"]
+            vs_ref = None
+            if (m is not ref and limit is not None and ref_limit
+                    and same_unit(r["hcpcs_dosage"], ref_unit)):
+                vs_ref = (limit - ref_limit) / ref_limit * 100
+            elif m is not ref and not same_unit(r["hcpcs_dosage"], ref_unit):
+                warn(f"{m['hcpcs_code']}: billing unit {r['hcpcs_dosage']!r} differs from reference "
+                     f"{ref['hcpcs_code']} {ref_unit!r}; no comparison shown.")
+            notes = (r["notes"] or "").lower()
+            has_8pct_note = "8% of reference add-on applied" in notes
+            if m is not ref and m["qualifies_8pct"].lower() in ("yes", "no"):
+                if (m["qualifies_8pct"].lower() == "yes") != has_8pct_note:
+                    warn(f"{m['hcpcs_code']}: sheet qualifies_8pct={m['qualifies_8pct']!r} but the CMS "
+                         f"note {'has' if has_8pct_note else 'lacks'} the 8% add-on.")
+            spark_values = recent_limits(m["hcpcs_code"])
+            return {
+                "code": m["hcpcs_code"],
+                "name": (m["brand_names"].split(";")[0].strip() or display_text(r["short_description"])),
+                "brands": m["brand_names"],
+                "description": display_text(r["short_description"]),
+                "role": m["role"],
+                "limit": limit,
+                "dosage": r["hcpcs_dosage"],
+                "vs_ref": vs_ref,
+                "cms_8pct": has_8pct_note,
+                "chart_values": [plain_decimal(v) or None for v in spark_values],
+                "spark": Markup(sparkline(spark_values)),
+            }
+
+        ref_entry = entry(ref)
+        bio_entries = sorted((entry(b) for b in bios),
+                             key=lambda e: (e["limit"] is None, e["limit"] or 0, e["code"]))
+        for i, e in enumerate(bio_entries):
+            e["color_var"] = GROUP_SHADES[i % len(GROUP_SHADES)]
+        ref_entry["color_var"] = "--color-text"
+        compared = [e for e in bio_entries if e["vs_ref"] is not None]
+        lowest = min(compared, key=lambda e: e["vs_ref"]) if compared else None
+        groups.append({
+            "molecule": molecule,
+            "slug": slugify(molecule),
+            "ref": ref_entry,
+            "bios": bio_entries,
+            "lowest": lowest,
+            "avg_vs_ref": (sum(e["vs_ref"] for e in compared) / len(compared)) if compared else None,
+            "n_compared": len(compared),
+            "sources": sorted({m["source_file"] for m in members}),
+        })
+    return groups
+
+
 def load_products(con, quarter: str) -> dict[str, list[dict]]:
     """NDC products mapped to each HCPCS code in the quarter's current
     NDC-HCPCS crosswalk files. One entry per NDC (an NDC listed in more than
@@ -371,7 +473,9 @@ def main() -> int:
         raise SystemExit("STOPPED: need at least two quarters of data to compare.")
     latest_q, prior_q = quarters[-1], quarters[-2]
     products = load_products(con, latest_q)
+    group_rows = load_groups(con)
     con.close()
+    warnings: list[str] = []
 
     current = [r for r in rows if r["is_current"]]
     by_quarter: dict[str, dict[str, dict]] = {}
@@ -444,6 +548,14 @@ def main() -> int:
     coinsurance = {"usual": usual_co, "usual_n": usual_co_n, "rows": reduced, "mismatch": mismatch,
                    "n_codes": len(latest), "top": reduced[:IRA_LIST]}
     reduced_by_code = {x["code"]: x for x in reduced}
+
+    # ---- Biosimilar groups (owner's sheet; prices from CMS) ----------------
+    groups = build_groups(group_rows, latest, recent_limits, warnings.append)
+    group_of = {}
+    for grp in groups:
+        for e in [grp["ref"], *grp["bios"]]:
+            group_of[e["code"]] = grp
+    groups_source = sorted({r["source_file"] for r in group_rows})
 
     new_codes = [code_row(latest[c]) for c in sorted(latest.keys() - prior.keys())]
     dropped_codes = [code_row(prior[c]) for c in sorted(prior.keys() - latest.keys())]
@@ -544,6 +656,7 @@ def main() -> int:
             "reduced": reduced_by_code.get(code),
             "basis": payment_basis(newest),
             "notes": display_text(newest["notes"]),
+            "group": group_of.get(code),
             "products": code_products,
         })
 
@@ -580,7 +693,8 @@ def main() -> int:
 
     env = make_env()
     common = {
-        "nav": NAV,
+        # The Biosimilars link appears once at least one group is published.
+        "nav": NAV[:3] + ([("biosimilars.html", "Biosimilars")] if groups else []) + NAV[3:],
         "latest_q": latest_q,
         "source_page": manifest["source_page"],
         "top_n": TOP_N,
@@ -597,6 +711,12 @@ def main() -> int:
 
     write("index.html", "index.html", s=summary, lead=lead, around=around, co=coinsurance)
     write("coinsurance.html", "coinsurance.html", co=coinsurance)
+    if groups:
+        (OUT / "biosimilars").mkdir()
+        write("biosimilars.html", "biosimilars.html", groups=groups, groups_source=groups_source)
+        for grp in groups:
+            write(f"biosimilars/{grp['slug']}.html", "biosimilar_group.html", g=grp, groups=groups,
+                  chart_labels=[quarter_label(q) for q in recent_qs], groups_source=groups_source)
     write("movers.html", "movers.html", s=summary, movers=movers, n_below_floor=n_below_floor,
           spark_quarters=SPARK_QUARTERS)
     write("changes.html", "changes.html", s=summary, new_codes=new_codes, dropped_codes=dropped_codes)
@@ -631,9 +751,13 @@ def main() -> int:
     print(f"  new {summary['n_new']:,}, dropped {summary['n_dropped']:,}")
     print(f"  reduced coinsurance: {len(reduced):,} codes below the usual "
           f"{plain_percent(str(usual_co))} ({usual_co_n:,} codes)")
+    print(f"  biosimilar groups published: {len(groups)}"
+          + (f" (from {', '.join(groups_source)})" if groups_source else " (no sheet snapshot loaded)"))
     if mismatch:
         print(f"\nNOTE: these codes have a reduced coinsurance percentage or the CMS note "
               f"'{INFLATION_NOTE}', but not both: {', '.join(mismatch)}")
+    for w in warnings:
+        print(f"\nNOTE: {w}")
     print(f"  left out of comparison: {summary['no_limit']} no limit, "
           f"{summary['unit_changed']} billing unit changed, {summary['zero_prior']} prior limit $0")
     return 0

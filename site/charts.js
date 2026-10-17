@@ -85,4 +85,67 @@
     // Wait for the web font so the axis labels are measured in it.
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw); else draw();
   };
+
+  // Several lines on one chart: the reference product in ink, biosimilars in
+  // shades of cyan. series: [{label, values, colorVar, width}]
+  window.drawGroupChart = function (canvas, labels, series) {
+    if (!window.Chart || !canvas) return;
+    var muted = css("--color-neutral-700"), text = css("--color-text"), divider = css("--color-divider");
+    var font = { family: css("--font-body") || "serif", size: 12 };
+    var last = labels.length - 1;
+    var all = [];
+    var datasets = series.map(function (s) {
+      var values = s.values.map(function (v) { return v === null ? null : Number(v); });
+      values.forEach(function (v) { if (v !== null) all.push(v); });
+      var color = css(s.colorVar);
+      return {
+        label: s.label, data: values, borderColor: color, backgroundColor: color,
+        borderWidth: s.width, spanGaps: false, tension: 0, borderJoinStyle: "round",
+        pointRadius: values.map(function (_, i) { return i === last ? s.width + 1 : 0; }),
+        pointHoverRadius: 4, order: s.width > 2 ? 0 : 1
+      };
+    });
+    var lo = Math.min.apply(null, all), hi = Math.max.apply(null, all);
+    var pad = (hi - lo || hi * 0.1 || 1) * 0.12;
+    function draw() {
+      new Chart(canvas, {
+        type: "line",
+        data: { labels: labels, datasets: datasets },
+        options: {
+          maintainAspectRatio: false, animation: false,
+          interaction: { mode: "index", intersect: false },
+          layout: { padding: { top: 6, right: 8 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: css("--color-bg"), titleColor: text, bodyColor: text,
+              borderColor: divider, borderWidth: 1, cornerRadius: 2, boxPadding: 4,
+              titleFont: font, bodyFont: font,
+              callbacks: { label: function (c) { return " " + c.dataset.label + ": " + dollars.format(c.parsed.y); } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false }, border: { display: false },
+              ticks: {
+                font: function (c) { return { family: font.family, size: 12, weight: c.index === last ? "600" : "400" }; },
+                color: function (c) { return c.index === last ? text : muted; },
+                maxRotation: 0, autoSkip: false,
+                callback: function (v, i) {
+                  var step = Math.ceil(labels.length / (canvas.clientWidth < 500 ? 5 : 9));
+                  return (last - i) % step === 0 ? labels[i] : "";
+                }
+              }
+            },
+            y: {
+              min: Math.max(0, lo - pad), max: hi + pad, border: { display: false },
+              grid: { color: divider, drawTicks: false },
+              ticks: { count: 4, padding: 10, font: font, color: muted, callback: axisDollars }
+            }
+          }
+        }
+      });
+    }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw); else draw();
+  };
 })();

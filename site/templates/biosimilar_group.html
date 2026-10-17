@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ g.molecule }} biosimilars{% endblock %}
+{% block content %}
+<p class="group-links">
+  {% for o in groups %}<a href="{{ root }}biosimilars/{{ o.slug }}.html"{% if o.slug == g.slug %} aria-current="page"{% endif %}>{{ o.molecule }}</a>{% endfor %}
+</p>
+
+<div class="front">
+  <article class="lead">
+    <span class="kicker">Biosimilars · {{ g.molecule }}</span>
+    {% if g.lowest and g.lowest.vs_ref < 0 %}
+    <h1>{{ g.lowest.name }} is paid {{ g.lowest.vs_ref|percent|replace("−", "") }} below {{ g.ref.name }}</h1>
+    {% else %}
+    <h1>{{ g.molecule }}: {{ g.ref.name }} and {{ g.bios|length }} biosimilar{{ "s" if g.bios|length > 1 }}</h1>
+    {% endif %}
+    <p class="dek">{{ g.bios|length }} biosimilar{{ "s" if g.bios|length > 1 }} bill against {{ g.ref.name }} ({{ g.ref.code }}).
+    {% if g.avg_vs_ref is not none %}On average they are paid {{ g.avg_vs_ref|arrow_percent }} relative to the reference product per {{ g.ref.dosage }} in {{ latest_q|quarter }}.{% endif %}</p>
+    <div class="chart"><canvas id="group-chart" role="img" aria-label="Payment limits for {{ g.ref.name }} and its biosimilars over the last {{ chart_labels|length }} quarters. The same {{ latest_q|quarter }} figures are listed beside the chart."></canvas></div>
+    <ul class="legend">
+      <li><span class="swatch" style="background:var(--color-text)"></span>{{ g.ref.name }} (reference)</li>
+      {% for b in g.bios %}<li><span class="swatch" style="background:var({{ b.color_var }})"></span>{{ b.name }}</li>{% endfor %}
+    </ul>
+    <span class="chart-caption">Payment limit per {{ g.ref.dosage }}, last {{ chart_labels|length }} quarters. Reference product in black, biosimilars in cyan.</span>
+  </article>
+
+  <aside class="side">
+    <div>
+      <h2>Per {{ g.ref.dosage }}, {{ latest_q|quarter }}</h2>
+      <ul class="mover-list">
+        {% for e in [g.ref] + g.bios %}
+        <li><a href="{{ root }}codes/{{ e.code }}.html">
+          <span><span class="name">{{ e.name }}</span><span class="sub">{{ e.code }} · {{ "Reference product" if e.role == "reference" else "Biosimilar" }}</span></span>
+          <span style="display:grid;justify-items:end">
+            <span class="name">{{ e.limit|money }}</span>
+            {% if e.role == "reference" %}<span class="sub">Reference</span>
+            {% elif e.vs_ref is none %}<span class="sub">not compared</span>
+            {% else %}<span class="sub {{ 'up' if e.vs_ref > 0 else 'down' if e.vs_ref < 0 else '' }}">{{ e.vs_ref|arrow_percent }}</span>{% endif %}
+          </span>
+        </a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<h2>All products</h2>
+<div class="table-wrap">
+<table class="stack">
+  <thead><tr><th>Product</th><th>Code</th><th>CMS description</th><th class="num">Per {{ g.ref.dosage }}</th><th class="num">vs. reference</th><th>CMS 8% add-on note</th><th>{{ chart_labels|length }} quarters</th></tr></thead>
+  <tbody>
+  {% for e in [g.ref] + g.bios %}
+    <tr>
+      <td data-label="Product"><a class="name" href="{{ root }}codes/{{ e.code }}.html">{{ e.name }}</a></td>
+      <td data-label="Code" class="code"><a href="{{ root }}codes/{{ e.code }}.html">{{ e.code }}</a></td>
+      <td data-label="CMS description" class="muted">{{ e.description }}</td>
+      <td data-label="Per {{ g.ref.dosage }}" class="num strong">{{ e.limit|money }}</td>
+      <td data-label="vs. reference" class="num {% if e.vs_ref is not none %}{{ 'up' if e.vs_ref > 0 else 'down' if e.vs_ref < 0 else '' }}{% endif %}">{% if e.role == "reference" %}Reference{% else %}{{ e.vs_ref|arrow_percent }}{% endif %}</td>
+      <td data-label="CMS 8% add-on note">{% if e.role == "reference" %}<span class="muted">–</span>{% elif e.cms_8pct %}Yes{% else %}<span class="muted">No</span>{% endif %}</td>
+      <td data-label="{{ chart_labels|length }} quarters" class="spark-cell {{ 'up' if e.role == 'reference' }}">{{ e.spark }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="note">Payment limits are from the CMS {{ latest_q|quarter }} file. Which products are grouped together comes from the site’s biosimilar groups list
+({{ g.sources|join(", ") }}), checked by hand; it is not a CMS file. “CMS 8% add-on note” shows whether CMS’s notes say the 8% of reference product add-on was applied.</p>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ root }}charts.js"></script>
+<script>
+drawGroupChart(document.getElementById("group-chart"), {{ chart_labels|tojson }}, [
+  {% for b in g.bios %}{ label: {{ b.name|tojson }}, values: {{ b.chart_values|tojson }}, colorVar: {{ b.color_var|tojson }}, width: 1.75 },
+  {% endfor %}{ label: {{ g.ref.name|tojson }}, values: {{ g.ref.chart_values|tojson }}, colorVar: "--color-text", width: 3 }
+]);
+</script>
+{% endblock %}

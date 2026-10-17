@@ -1,0 +1,11 @@
+{
+  "source": "https://docs.google.com/spreadsheets/d/1w-2zu98UzIWpaH43pk6NxjCTkcAO_d65CNsIcHYkcK4/export?format=csv&gid=2099057208",
+  "snapshots": [
+    {
+      "local_path": "reference/biosimilar_groups/2026-10-17T182345Z_0f8786ec0c9e.csv",
+      "fetched_at": "2026-10-17T18:23:45+00:00",
+      "sha256": "0f8786ec0c9e67b8b5083f5019a142de1918eb92165acaddf721b449af4ace3b",
+      "size_bytes": 5340
+    }
+  ]
+}

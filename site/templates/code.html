@@ -50,6 +50,12 @@
       <a href="{{ root }}coinsurance.html">All reduced-coinsurance drugs</a></span>
     </div>
     {% endif %}
+    {% if p.group %}
+    <div class="fact">
+      <span class="kicker" style="margin:0">Biosimilar market</span>
+      <a class="more" style="font-size:19px;line-height:1.3" href="{{ root }}biosimilars/{{ p.group.slug }}.html">{% if p.group.ref.code == p.code %}Compare with {{ p.group.bios|length }} {{ p.group.molecule|lower }} biosimilar{{ "s" if p.group.bios|length > 1 }}{% else %}Compare with {{ p.group.ref.name }} and other {{ p.group.molecule|lower }} biosimilars{% endif %} →</a>
+    </div>
+    {% endif %}
     {% if p.other_descriptions %}
     <div class="fact">
       <span class="label">CMS has also described this code as</span>

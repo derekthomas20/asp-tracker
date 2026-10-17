@@ -1,0 +1,3 @@
+# Source snapshots must stay byte-for-byte as downloaded so their SHA-256
+# matches reference/manifest.json: no line-ending conversion.
+reference/biosimilar_groups/** -text
