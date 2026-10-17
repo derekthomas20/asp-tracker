@@ -6,6 +6,18 @@
       "fetched_at": "2026-10-17T18:23:45+00:00",
       "sha256": "0f8786ec0c9e67b8b5083f5019a142de1918eb92165acaddf721b449af4ace3b",
       "size_bytes": 5340
+    },
+    {
+      "local_path": "reference/biosimilar_groups/2026-10-17T183225Z_10e2ab5a9542.csv",
+      "fetched_at": "2026-10-17T18:32:25+00:00",
+      "sha256": "10e2ab5a9542fc5e291c28590a6ff7df460b8e6db7c7215f4427e6ca3643bda8",
+      "size_bytes": 5407
+    },
+    {
+      "local_path": "reference/biosimilar_groups/2026-10-17T183707Z_d3109bb50c53.csv",
+      "fetched_at": "2026-10-17T18:37:07+00:00",
+      "sha256": "d3109bb50c535afb8720d143624a2a544760963f9e312fbae83c434e3f409b46",
+      "size_bytes": 5405
     }
   ]
 }
