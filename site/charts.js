@@ -1,4 +1,4 @@
-/* Line charts in the site's Broadsheet style, drawn with Chart.js.
+/* Line charts in the site's style, drawn with Chart.js.
    Copied into public/ by scripts/build_site.py. The numbers come from each
    page (written there by the build script); this file only draws them. */
 (function () {
@@ -19,11 +19,11 @@
     opts = opts || {};
     var values = rawValues.map(function (v) { return v === null ? null : Number(v); });
     var last = values.length - 1;
-    var line = css(opts.colorVar || "--color-text");
+    var line = css(opts.colorVar || "--color-navy");
     var muted = css("--color-neutral-700");
     var text = css("--color-text");
     var divider = css("--color-divider");
-    var font = { family: css("--font-body") || "serif", size: 12 };
+    var font = { family: css("--font-body") || "sans-serif", size: 12 };
 
     // Same padding rule as the design: 12% of the range above and below.
     var shown = values.filter(function (v) { return v !== null; });
@@ -51,7 +51,7 @@
           plugins: {
             legend: { display: false },
             tooltip: {
-              backgroundColor: css("--color-bg"), titleColor: text, bodyColor: text,
+              backgroundColor: css("--color-surface"), titleColor: text, bodyColor: text,
               borderColor: divider, borderWidth: 1, cornerRadius: 2, displayColors: false,
               titleFont: font, bodyFont: { family: font.family, size: 13, weight: "600" },
               callbacks: { label: function (c) { return dollars.format(c.parsed.y); } }
@@ -86,12 +86,12 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw); else draw();
   };
 
-  // Several lines on one chart: the reference product in ink, biosimilars in
-  // shades of cyan. series: [{label, values, colorVar, width}]
+  // Several lines on one chart: the reference product as a thick navy line,
+  // biosimilars in teal, light teal, then colors that differ in lightness. series: [{label, values, colorVar, width}]
   window.drawGroupChart = function (canvas, labels, series) {
     if (!window.Chart || !canvas) return;
     var muted = css("--color-neutral-700"), text = css("--color-text"), divider = css("--color-divider");
-    var font = { family: css("--font-body") || "serif", size: 12 };
+    var font = { family: css("--font-body") || "sans-serif", size: 12 };
     var last = labels.length - 1;
     var all = [];
     var datasets = series.map(function (s) {
@@ -118,7 +118,7 @@
           plugins: {
             legend: { display: false },
             tooltip: {
-              backgroundColor: css("--color-bg"), titleColor: text, bodyColor: text,
+              backgroundColor: css("--color-surface"), titleColor: text, bodyColor: text,
               borderColor: divider, borderWidth: 1, cornerRadius: 2, boxPadding: 4,
               titleFont: font, bodyFont: font,
               callbacks: { label: function (c) { return " " + c.dataset.label + ": " + dollars.format(c.parsed.y); } }

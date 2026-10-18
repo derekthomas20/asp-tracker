@@ -19,8 +19,9 @@ Pages written to public/:
     search-index.js     the list behind the header search suggestions
     charts.js           draws the Chart.js line charts in the site's style
 
-Templates are in site/templates; site/style.css and site/charts.js are
-copied as they are. The look follows the "Broadsheet" design in design/.
+Templates are in site/templates; site/style.css, site/charts.js and
+site/static/ (logo, favicons) are copied as they are. The layout follows the
+"Broadsheet" design in design/; colors and fonts are the Rxcurve brand.
 public/ is deleted and rebuilt from scratch on every run.
 
 Usage (from the repository root, after scripts/parse.py):
@@ -31,6 +32,7 @@ from __future__ import annotations
 
 import calendar
 import csv
+import hashlib
 import html
 import json
 import re
@@ -52,6 +54,7 @@ MANIFEST_PATH = ROOT / "data" / "manifest.json"
 TEMPLATES = ROOT / "site" / "templates"
 STYLESHEET = ROOT / "site" / "style.css"
 CHART_SCRIPT = ROOT / "site" / "charts.js"
+STATIC = ROOT / "site" / "static"  # logo and favicons
 OUT = ROOT / "public"
 CSV_NAME = "asp-payment-limits-history.csv"
 
@@ -63,10 +66,10 @@ PCT_MIN_PRIOR = Decimal("1")
 SPARK_QUARTERS = 8  # quarters shown in the small trend lines and home chart
 AROUND_LEAD = 6  # rows in the home page "Also rising" / "Largest decreases" lists
 IRA_LIST = 8  # rows in the home page reduced coinsurance list
-# Chart colors for biosimilars (the design's cyan ramp); the reference is ink.
-GROUP_SHADES = ["--color-accent-400", "--color-accent-500", "--color-accent-600",
-                "--color-accent-700", "--color-accent-800", "--color-accent-300",
-                "--color-accent-900"]
+# Chart colors for biosimilars, in order (defined in site/style.css); the
+# reference product is the thick navy line.
+GROUP_SHADES = ["--color-teal", "--color-teal-light", "--color-series-3",
+                "--color-series-4", "--color-series-5", "--color-series-6"]
 REBATE_PAGE = ("https://www.cms.gov/initiatives/medicare-prescription-drug-affordability/"
                "overview/medicare-inflation-rebate-program")
 
@@ -359,7 +362,7 @@ def build_groups(group_rows: list[dict], latest: dict[str, dict], recent_limits,
                              key=lambda e: (e["limit"] is None, e["limit"] or 0, e["code"]))
         for i, e in enumerate(bio_entries):
             e["color_var"] = GROUP_SHADES[i % len(GROUP_SHADES)]
-        ref_entry["color_var"] = "--color-text"
+        ref_entry["color_var"] = "--color-navy"
         compared = [e for e in bio_entries if e["vs_ref"] is not None]
         lowest = min(compared, key=lambda e: e["vs_ref"]) if compared else None
         groups.append({
@@ -681,6 +684,7 @@ def main() -> int:
     (OUT / "downloads").mkdir()
     shutil.copy2(STYLESHEET, OUT / "style.css")
     shutil.copy2(CHART_SCRIPT, OUT / "charts.js")
+    shutil.copytree(STATIC, OUT / "static")
 
     # The header search box suggests codes as you type. Its list is written as
     # a script (not JSON) so it also works when a page is opened from disk.
@@ -695,6 +699,9 @@ def main() -> int:
     common = {
         # The Biosimilars link appears once at least one group is published.
         "nav": NAV[:3] + ([("biosimilars.html", "Biosimilars")] if groups else []) + NAV[3:],
+        # Added to the style.css and charts.js links so browsers fetch them
+        # again whenever they change instead of using an old saved copy.
+        "asset_version": hashlib.sha256(STYLESHEET.read_bytes() + CHART_SCRIPT.read_bytes()).hexdigest()[:10],
         "latest_q": latest_q,
         "source_page": manifest["source_page"],
         "top_n": TOP_N,

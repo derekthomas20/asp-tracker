@@ -3,18 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}{% endblock %} · ASP Tracker</title>
+<title>{% block title %}{% endblock %} | Rxcurve</title>
 <meta name="description" content="Medicare Part B drug payment limits from the CMS quarterly ASP pricing files.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap">
-<link rel="stylesheet" href="{{ root }}style.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;800&family=Source+Sans+3:wght@400;600&display=swap">
+<link rel="icon" href="{{ root }}static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="{{ root }}static/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="{{ root }}static/favicon-16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="{{ root }}static/apple-touch-icon.png" sizes="180x180">
+<link rel="stylesheet" href="{{ root }}style.css?v={{ asset_version }}">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="masthead wrap">
+<header class="masthead">
+<div class="wrap">
   <div class="masthead-top">
-    <a class="brand" href="{{ root }}index.html">ASP Tracker</a>
+    <a class="brand wordmark" href="{{ root }}index.html"><img src="{{ root }}static/logo-dark.svg" alt=""><span><span class="rx">Rx</span><span class="curve">curve</span></span></a>
     <form class="header-search" action="{{ root }}search.html" role="search" autocomplete="off">
       <label for="site-q" class="skip">Search codes</label>
       <input id="site-q" name="q" type="search" placeholder="Search code or drug name"
@@ -33,13 +38,15 @@
     </nav>
   </div>
   <div class="rule-under"></div>
+</div>
 </header>
 <main id="main" class="wrap">
 {% block content %}{% endblock %}
 </main>
 <footer class="site-footer">
   <div class="wrap">
-    <p>Built from the <a href="{{ source_page }}">CMS Medicare Part B ASP pricing files</a>. Latest quarter: {{ latest_q|quarter }}.
+    <a class="site-footer-brand wordmark" href="{{ root }}index.html"><img src="{{ root }}static/logo.svg" alt=""><span><span class="rx">Rx</span><span class="curve">curve</span></span></a>
+    <p>Rxcurve is built from the <a href="{{ source_page }}">CMS Medicare Part B ASP pricing files</a>. Latest quarter: {{ latest_q|quarter }}.
     Not affiliated with CMS. Listing in the file does not mean Medicare covers a drug. <a href="{{ root }}about.html">About this data</a></p>
   </div>
 </footer>

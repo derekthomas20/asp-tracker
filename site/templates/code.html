@@ -125,7 +125,7 @@
 {% endblock %}
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="{{ root }}charts.js"></script>
+<script src="{{ root }}charts.js?v={{ asset_version }}"></script>
 <script>
 drawLimitChart(document.getElementById("chart"), {{ p.chart_labels|tojson }}, {{ p.chart_values|tojson }});
 </script>

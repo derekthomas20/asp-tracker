@@ -53,9 +53,11 @@ data/
                      CMS posted date, download date, SHA-256 hash
 scripts/             Python scripts: download, load, build site
 site/                Website source: Jinja2 templates in site/templates/,
-                     the stylesheet site/style.css and site/charts.js
-design/              Design reference (Broadsheet look). Layout and styling
-                     only: its sample numbers are not data
+                     the stylesheet site/style.css and site/charts.js, and
+                     the Rxcurve logo and favicons in site/static/ (PNGs drawn
+                     by scripts/make_favicons.py)
+design/              Design reference (Broadsheet layout; the site is branded
+                     Rxcurve). Layout only: its sample numbers are not data
 reference/
   biosimilar_groups/ Snapshots of the owner's biosimilar_groups Google Sheet
                      (saved by fetch_groups.py). Never modified or deleted.

@@ -4,8 +4,10 @@
 <span class="kicker cyan">Method</span>
 <h1>About this data</h1>
 
+<p class="dek">Rxcurve reports Medicare Part B drug payment limits, quarter by quarter, straight from the CMS files.</p>
+
 <h2>Where it comes from</h2>
-<p>Every number on this site is computed by a script from the quarterly Medicare Part B drug payment limit files that the Centers for Medicare &amp; Medicaid Services (CMS) publishes on its
+<p>Every number on Rxcurve is computed by a script from the quarterly Medicare Part B drug payment limit files that the Centers for Medicare &amp; Medicaid Services (CMS) publishes on its
 <a href="{{ source_page }}">ASP pricing files page</a>. The site covers {{ first_q|quarter }} to {{ latest_q|quarter }}.
 When CMS re-posts a corrected file for a past quarter, the newer file is used and the earlier one is kept and shown as an earlier version.</p>
 
@@ -22,10 +24,10 @@ So a change in a payment limit shows up months after the change in prices that c
 </ul>
 
 <h2>Independence</h2>
-<p>This site is not affiliated with, endorsed by, or connected to CMS or any other government agency. Check the
+<p>Rxcurve is not affiliated with, endorsed by, or connected to CMS or any other government agency. Check the
 <a href="{{ source_page }}">CMS files</a> before relying on any figure.</p>
 
 <h2>Updates</h2>
 <p>Most recent file downloaded from CMS: {{ last_download|long_date }}.<br>
-This site was built on {{ built|long_date }}.</p>
+Rxcurve was last built on {{ built|long_date }}.</p>
 {% endblock %}

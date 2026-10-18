@@ -113,9 +113,9 @@
 {% block scripts %}
 {% if lead %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="{{ root }}charts.js"></script>
+<script src="{{ root }}charts.js?v={{ asset_version }}"></script>
 <script>
-drawLimitChart(document.getElementById("lead-chart"), {{ lead.chart_labels|tojson }}, {{ lead.chart_values|tojson }}, { colorVar: "--color-accent-2" });
+drawLimitChart(document.getElementById("lead-chart"), {{ lead.chart_labels|tojson }}, {{ lead.chart_values|tojson }}, { colorVar: "--color-up" });
 </script>
 {% endif %}
 {% endblock %}
