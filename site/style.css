@@ -332,6 +332,12 @@ tr.superseded td { color: var(--color-text-2); }
 
 .ncr { display: grid; gap: var(--space-4); }
 .ncr > h1, .ncr > .kicker, .ncr > .dek, .ncr > .note { margin: 0; }
+.ncr-steps { margin: 0; padding-left: 22px; display: grid; gap: 4px; max-width: 46rem; }
+.ncr-summary {
+  margin: 0; font-size: 17px; line-height: 1.5; color: var(--color-navy);
+  border-left: 3px solid var(--color-teal); padding-left: var(--space-3); max-width: 60rem;
+}
+.ncr-table.no340 .c340 { display: none; }
 .ncr-panel {
   background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg);
   padding: var(--space-4); display: grid; gap: var(--space-3); min-width: 0;

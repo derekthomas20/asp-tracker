@@ -5,6 +5,11 @@
 <span class="kicker">Tools · Biosimilars</span>
 <h1>Biosimilar net cost recovery</h1>
 <p class="dek">Compare what each product in a market recovers after acquisition cost, per billing unit and per administered dose.</p>
+<ol class="ncr-steps">
+  <li><strong>Pick a market</strong> and check the dose and payer mix.</li>
+  <li><strong>Enter your price</strong> for each package. Payment limits are already filled in from CMS.</li>
+  <li><strong>Read the result:</strong> the leader recovers the most per dose after paying for the drug.</li>
+</ol>
 <p class="note">Payment limits are prefilled from the CMS {{ latest_q|quarter }} file. They reflect sales from about two quarters earlier ({{ sales_q|quarter }}), so today’s prices may already differ.
 This is an estimate for planning. It is not billing, coding or financial advice.</p>
 
@@ -40,13 +45,19 @@ This is an estimate for planning. It is not billing, coding or financial advice.
     <fieldset><legend>Waste and volume</legend>
       <label class="ncr-tog"><input id="wasteBill" type="checkbox"><span>Payers pay for discarded drug (JW)<small>Single-dose vials only</small></span></label>
       <label class="ncr-tog"><input id="mdvReuse" type="checkbox"><span>Reuse multi-dose leftovers<small>Enough patients to use an opened vial within its in-use window</small></span></label>
-      <label class="ncr-f">Administrations per year<input id="annual" type="number" min="0" step="1" inputmode="numeric"></label>
+      <label class="ncr-f">Doses given per year<input id="annual" type="number" min="0" step="1" inputmode="numeric"></label>
+    </fieldset>
+    <fieldset><legend>How you buy</legend>
+      <label class="ncr-tog"><input id="is340" type="checkbox"><span>We buy some doses under 340B<small>For 340B covered entities. Most clinics and physician offices leave this off.</small></span></label>
+      <label class="ncr-f" id="share340L" hidden>Share of doses bought at the 340B price %<input id="share340" type="number" min="0" max="100" step="1" inputmode="decimal"></label>
+      <p class="ncr-calc" id="note340" hidden>Medicare pays the same payment limit either way; only your cost changes. Enter the 340B price and the price you pay for other patients for each package.</p>
     </fieldset>
   </div>
 </section>
 
 <section class="ncr-panel" aria-labelledby="verdictH">
   <div class="ncr-head"><h2 id="verdictH">Net cost recovery per dose</h2><p id="verdictSub"></p></div>
+  <p class="ncr-summary" id="summary" aria-live="polite"></p>
   <div class="ncr-verdict">
     <div class="ncr-lead" id="leadCard"></div>
     <div class="ncr-bars" id="bars"></div>
@@ -54,8 +65,8 @@ This is an estimate for planning. It is not billing, coding or financial advice.
 </section>
 
 <section class="ncr-panel" aria-labelledby="priceH">
-  <div class="ncr-head"><h2 id="priceH">Contract pricing by package</h2>
-    <p>Payment limits per billing unit come from the CMS {{ latest_q|quarter }} file; you can change any of them. Enter your contract price per package. Package sizes and billing units come from the CMS crosswalk.</p></div>
+  <div class="ncr-head"><h2 id="priceH">Your prices by package</h2>
+    <p>Payment limits per billing unit come from the CMS {{ latest_q|quarter }} file; you can change any of them. Enter what you pay per package. Package sizes and billing units come from the CMS crosswalk.</p></div>
   <div class="ncr-actions">
     <button type="button" id="loadExamples">Load example prices</button>
     <button type="button" class="quiet" id="clearPrices">Clear prices</button>
@@ -64,9 +75,9 @@ This is an estimate for planning. It is not billing, coding or financial advice.
   <p class="callout" id="exampleNote" hidden></p>
   <p class="ncr-private">Your prices and settings are saved only in this browser. They never leave it.</p>
   <div class="ncr-scroll">
-    <table class="ncr-table">
+    <table class="ncr-table no340" id="priceTable">
       <thead><tr>
-        <th>Package</th><th class="num">Billing units</th><th>Vial</th><th class="num">Contract $ / pkg</th>
+        <th>Package</th><th class="num">Billing units</th><th>Vial</th><th class="num" id="priceHead">Contract $ / pkg</th><th class="num c340">340B $ / pkg</th>
         <th class="num">Net cost / unit</th><th class="num">Paid / unit</th><th class="num">NCR / unit</th><th class="num">Margin on cost</th>
       </tr></thead>
       <tbody id="priceBody"></tbody>
@@ -87,12 +98,23 @@ This is an estimate for planning. It is not billing, coding or financial advice.
   <div class="ncr-actions"><button type="button" class="quiet" id="copyBtn">Copy results as table</button><span class="ncr-toast" id="copyToast" role="status"></span></div>
 </section>
 
-<section class="ncr-panel" aria-labelledby="beH">
-  <div class="ncr-head"><h2 id="beH">Breakeven contract price</h2>
-    <p>The contract price each package would need for its NCR per unit to match the leader’s best package. Use it as a negotiation target.</p></div>
+<section class="ncr-panel" aria-labelledby="buyH">
+  <div class="ncr-head"><h2 id="buyH">What you would buy in a year</h2>
+    <p id="buySub">Packages needed for the doses given per year, by strength, if every dose used that product.</p></div>
   <div class="ncr-scroll">
     <table class="ncr-table">
-      <thead><tr><th>Product</th><th>Package</th><th class="num">Current $ / pkg</th><th class="num">Breakeven $ / pkg</th><th class="num">Change needed</th><th></th></tr></thead>
+      <thead><tr><th>Product</th><th>Packages per year, by strength</th><th class="num">Drug spend per year</th><th class="num">Payment per year</th><th class="num">NCR per year</th></tr></thead>
+      <tbody id="buyBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="ncr-panel" aria-labelledby="beH">
+  <div class="ncr-head"><h2 id="beH">Breakeven price</h2>
+    <p id="beSub">The price each package would need for its NCR per unit to match the leader’s best package. Use it as a negotiation target.</p></div>
+  <div class="ncr-scroll">
+    <table class="ncr-table">
+      <thead><tr><th>Product</th><th>Package</th><th class="num" id="beCurHead">Current $ / pkg</th><th class="num">Breakeven $ / pkg</th><th class="num">Change needed</th><th></th></tr></thead>
       <tbody id="beBody"></tbody>
     </table>
   </div>
@@ -105,11 +127,16 @@ Net cost / unit       = contract price × (1 − rebate %) ÷ billing units
 Paid / unit           = payment limit × (1 + limit change) ×
                         [Medicare share × (1 − 0.8 × 2% if sequestration) + commercial share × commercial %]
 NCR / unit            = paid / unit − net cost / unit
-NCR / dose            = paid / unit × billed units − acquisition cost of the vials used</div>
+NCR / dose            = paid / unit × billed units − acquisition cost of the vials used
+
+With 340B on (340B share s):
+Package cost          = (1 − s) × other price × (1 − rebate %) + s × 340B price</div>
       <p><strong>Payment limit.</strong> Each product’s per-unit payment limit is prefilled from the CMS {{ latest_q|quarter }} quarterly file by its HCPCS code. For a reference product it is ASP + 6%. For a qualifying biosimilar it is the biosimilar’s ASP plus 8% of the reference product’s ASP, so a biosimilar can pay more per unit than its own price suggests. Confirm each product’s add-on period. Limits reflect sales from about two quarters earlier, so use the limit-change slider to test erosion.</p>
       <p><strong>Doses.</strong> Doses round up to whole billing units. Without leftover reuse, multi-dose vials are drawn first so any waste falls on single-dose vials, where JW billing can apply. With reuse, single-dose vials are drawn first and the multi-dose remainder is saved, so only the drug actually used is costed. Vial selection minimizes discarded drug rather than maximizing billable waste.</p>
-      <p><strong>Not modeled.</strong> Patient coinsurance collection, manufacturer discarded-drug refunds, 340B pricing, administration fees, and payer step or preferred-product rules. A payer that requires one product makes NCR moot for those patients.</p>
-      <p><strong>Products and packages.</strong> Which products compete in each market comes from the site’s biosimilar groups list, checked by hand; it is not a CMS file. Package sizes come from the CMS {{ latest_q|quarter }} NDC–HCPCS crosswalk, which lists the billing units in each package. Whether a vial is single- or multi-dose and the default doses come from the FDA labels and can be changed. Example prices are made up for illustration and are not real contracts.</p>
+      <p><strong>Packages per year.</strong> The vials used per dose times the doses given per year. With multi-dose reuse on, multi-dose vials are counted by the drug actually used, so those counts are approximate (marked ≈).</p>
+      <p><strong>340B.</strong> Medicare Part B pays the same payment limit whether or not a drug was bought under 340B, so turning 340B on changes only your cost. Each package’s cost becomes a mix of its 340B price and the price you pay for other patients, weighted by the 340B share. The rebate applies only to the non-340B price. When the 340B share is between 0% and 100%, the summary also shows which product leads for 340B doses and for other doses, because they can differ. Some 340B hospitals cannot buy through a group purchasing organization (GPO) for their other patients; enter the price you actually pay.</p>
+      <p><strong>Not modeled.</strong> Patient coinsurance collection, manufacturer discarded-drug refunds, administration fees, commercial payers that pay differently for 340B drugs, Medicaid duplicate-discount rules, and payer step or preferred-product rules. A payer that requires one product makes NCR moot for those patients.</p>
+      <p><strong>Products and packages.</strong> Which products compete in each market comes from the site’s biosimilar groups list, checked by hand; it is not a CMS file. Package sizes come from the CMS {{ latest_q|quarter }} NDC–HCPCS crosswalk, which lists the billing units in each package. Whether a vial is single- or multi-dose and the default doses come from the FDA labels and can be changed. Example prices are made up for illustration and are not real contracts; there are no example 340B prices.</p>
     </div>
   </details>
 </section>
