@@ -22,8 +22,10 @@ permissions:
 
 # If you push twice in quick succession, let the first deploy finish and then
 # run the newer one, instead of two deploys racing each other.
+# (The group was renamed from "pages" because a stuck run on 2026-10-19
+# could not be cancelled and held that group; a new name starts fresh.)
 concurrency:
-  group: pages
+  group: pages-deploy
   cancel-in-progress: false
 
 jobs:
