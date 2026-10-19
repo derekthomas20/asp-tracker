@@ -1,0 +1,170 @@
+{
+  "_about": [
+    "Markets for the Biosimilar Net Cost Recovery calculator (tools/ncr-calculator/). Maintained by hand.",
+    "This file holds NO payment limits, product lists or package sizes. scripts/build_site.py takes:",
+    "  - products: the verified rows of the biosimilar_groups sheet for the market's molecule,",
+    "    one product per HCPCS code and CMS crosswalk drug name;",
+    "  - packages: billing units per package from the latest CMS NDC-HCPCS crosswalk;",
+    "  - payment limits and billing units: the latest CMS payment limit file.",
+    "Each market here gives only what CMS files do not: the default dose (from the FDA label named in",
+    "dose_source; visitors can change it), which packages to use (only_units, in billing units), which",
+    "packages are multi-dose vials (everything else is single-dose), and made-up example contract",
+    "terms filled in only when a visitor clicks \"Load example prices\" (not real contracts).",
+    "dose.basis is \"per kg\", \"per m2\" or \"flat\"; the dose is in the market's billing-unit measure",
+    "(mg, mcg or units). example_prices are keyed by product name, then package amount in that measure."
+  ],
+  "markets": [
+    {
+      "id": "trastuzumab",
+      "name": "Trastuzumab (IV)",
+      "molecule": "Trastuzumab",
+      "dose": {"basis": "per kg", "value": 6, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Prototype default (reference/ncr-calculator.html)",
+      "multi_dose": [{"units": 42}],
+      "example_prices": {
+        "Herceptin": {"150": 1150},
+        "Hercessi": {"150": 300, "420": 820},
+        "Herzuma": {"150": 410, "420": 1120},
+        "Kanjinti": {"150": 390, "420": 1050},
+        "Ogivri": {"150": 285, "420": 780},
+        "Ontruzant": {"150": 520, "420": 1430},
+        "Trazimera": {"150": 330, "420": 900}
+      },
+      "example_rebates": {"Trazimera": 3}
+    },
+    {
+      "id": "bevacizumab",
+      "name": "Bevacizumab",
+      "molecule": "Bevacizumab",
+      "dose": {"basis": "per kg", "value": 15, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Prototype default (reference/ncr-calculator.html)",
+      "example_prices": {
+        "Avastin": {"100": 690, "400": 2760},
+        "Alymsys": {"100": 230, "400": 920},
+        "Jobevne": {"100": 180, "400": 720},
+        "Mvasi": {"100": 215, "400": 860},
+        "Vegzelma": {"100": 260, "400": 1040},
+        "Zirabev": {"100": 190, "400": 760}
+      },
+      "example_rebates": {"Vegzelma": 2}
+    },
+    {
+      "id": "rituximab",
+      "name": "Rituximab (IV)",
+      "molecule": "Rituximab",
+      "dose": {"basis": "per m2", "value": 375, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Prototype default (reference/ncr-calculator.html)",
+      "example_prices": {
+        "Rituxan": {"100": 880, "500": 4400},
+        "Truxima": {"100": 440, "500": 2200},
+        "Ruxience": {"100": 370, "500": 1850},
+        "Riabni": {"100": 400, "500": 2000}
+      }
+    },
+    {
+      "id": "pegfilgrastim",
+      "name": "Pegfilgrastim",
+      "molecule": "Pegfilgrastim",
+      "dose": {"basis": "flat", "value": 6, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Prototype default (reference/ncr-calculator.html)",
+      "example_prices": {
+        "Neulasta": {"6": 3900},
+        "Fulphila": {"6": 720},
+        "Fylnetra": {"6": 650},
+        "Nyvepria": {"6": 560},
+        "Stimufend": {"6": 820},
+        "Udenyca": {"6": 1000},
+        "Ziextenzo": {"6": 600}
+      }
+    },
+    {
+      "id": "infliximab",
+      "name": "Infliximab",
+      "molecule": "Infliximab",
+      "dose": {"basis": "per kg", "value": 5, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Prototype default (reference/ncr-calculator.html)",
+      "example_prices": {
+        "Remicade": {"100": 700},
+        "Infliximab": {"100": 300},
+        "Avsola": {"100": 280},
+        "Inflectra": {"100": 420},
+        "Renflexis": {"100": 250}
+      }
+    },
+    {
+      "id": "filgrastim",
+      "name": "Filgrastim",
+      "molecule": "Filgrastim",
+      "dose": {"basis": "per kg", "value": 5, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Neupogen label: 5 mcg/kg/day after myelosuppressive chemotherapy"
+    },
+    {
+      "id": "denosumab-60",
+      "name": "Denosumab 60 mg (Prolia and biosimilars)",
+      "molecule": "Denosumab",
+      "dose": {"basis": "flat", "value": 60, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Prolia label: 60 mg every 6 months",
+      "only_units": [60]
+    },
+    {
+      "id": "denosumab-120",
+      "name": "Denosumab 120 mg (Xgeva and biosimilars)",
+      "molecule": "Denosumab",
+      "dose": {"basis": "flat", "value": 120, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Xgeva label: 120 mg every 4 weeks",
+      "only_units": [120]
+    },
+    {
+      "id": "ustekinumab-iv",
+      "name": "Ustekinumab (IV induction)",
+      "molecule": "Ustekinumab",
+      "dose": {"basis": "flat", "value": 390, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Stelara label, Crohn's disease IV induction: 390 mg for over 55 to 85 kg (260 mg at 55 kg or less, 520 mg over 85 kg)",
+      "only_units": [130]
+    },
+    {
+      "id": "tocilizumab-iv",
+      "name": "Tocilizumab (IV)",
+      "molecule": "Tocilizumab",
+      "dose": {"basis": "per kg", "value": 8, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Actemra label, rheumatoid arthritis IV: 8 mg/kg every 4 weeks (up to 800 mg)",
+      "only_units": [80, 200, 400]
+    },
+    {
+      "id": "eculizumab",
+      "name": "Eculizumab",
+      "molecule": "Eculizumab",
+      "dose": {"basis": "flat", "value": 900, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Soliris label, PNH maintenance: 900 mg every 2 weeks"
+    },
+    {
+      "id": "ranibizumab",
+      "name": "Ranibizumab",
+      "molecule": "Ranibizumab",
+      "dose": {"basis": "flat", "value": 0.5, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Lucentis label, wet AMD: 0.5 mg once a month"
+    },
+    {
+      "id": "aflibercept",
+      "name": "Aflibercept (2 mg)",
+      "molecule": "Aflibercept",
+      "dose": {"basis": "flat", "value": 2, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Eylea label, wet AMD: 2 mg every 4 weeks for 3 doses, then every 8 weeks"
+    },
+    {
+      "id": "epoetin-alfa",
+      "name": "Epoetin alfa (non-ESRD)",
+      "molecule": "Epoetin alfa",
+      "dose": {"basis": "flat", "value": 40000, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Epogen label, anemia from chemotherapy: 40,000 units once a week (or 150 units/kg three times a week)",
+      "multi_dose": [{"units": 20}, {"units": 10, "pkg_size": "2"}]
+    },
+    {
+      "id": "natalizumab",
+      "name": "Natalizumab",
+      "molecule": "Natalizumab",
+      "dose": {"basis": "flat", "value": 300, "weight_kg": 80, "bsa_m2": 1.9},
+      "dose_source": "Tysabri label: 300 mg every 4 weeks"
+    }
+  ]
+}
