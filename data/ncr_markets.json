@@ -1,0 +1,127 @@
+{
+  "_about": [
+    "Markets for the Biosimilar Net Cost Recovery calculator (tools/ncr-calculator/).",
+    "Maintained by hand. It says which products and packages exist; it holds NO payment limits.",
+    "scripts/build_site.py looks up each HCPCS code in the latest quarter of data/asp.duckdb for its",
+    "payment limit and billing unit. Use \"hcpcs\": null for a product with no code yet.",
+    "dose.basis is \"mg/kg\", \"mg/m2\" or \"flat\". vial is \"single-dose\" or \"multi-dose\".",
+    "example_price (per package) and example_rebate_pct are made-up example contract terms,",
+    "filled in only when a visitor clicks \"Load example prices\". They are not real contracts."
+  ],
+  "markets": [
+    {
+      "id": "trastuzumab",
+      "name": "Trastuzumab (IV)",
+      "dose": {"basis": "mg/kg", "value": 6, "weight_kg": 80, "bsa_m2": 1.9},
+      "products": [
+        {"name": "Herceptin", "hcpcs": "J9355", "reference": true,
+         "packages": [{"mg": 150, "vial": "single-dose", "example_price": 1150}]},
+        {"name": "Hercessi", "hcpcs": "Q5146", "reference": false,
+         "packages": [{"mg": 150, "vial": "single-dose", "example_price": 300},
+                      {"mg": 420, "vial": "multi-dose", "example_price": 820}]},
+        {"name": "Herzuma", "hcpcs": "Q5113", "reference": false,
+         "packages": [{"mg": 150, "vial": "single-dose", "example_price": 410},
+                      {"mg": 420, "vial": "multi-dose", "example_price": 1120}]},
+        {"name": "Kanjinti", "hcpcs": "Q5117", "reference": false,
+         "packages": [{"mg": 150, "vial": "single-dose", "example_price": 390},
+                      {"mg": 420, "vial": "multi-dose", "example_price": 1050}]},
+        {"name": "Ogivri", "hcpcs": "Q5114", "reference": false,
+         "packages": [{"mg": 150, "vial": "single-dose", "example_price": 285},
+                      {"mg": 420, "vial": "multi-dose", "example_price": 780}]},
+        {"name": "Ontruzant", "hcpcs": "Q5112", "reference": false,
+         "packages": [{"mg": 150, "vial": "single-dose", "example_price": 520},
+                      {"mg": 420, "vial": "multi-dose", "example_price": 1430}]},
+        {"name": "Trazimera", "hcpcs": "Q5116", "reference": false, "example_rebate_pct": 3,
+         "packages": [{"mg": 150, "vial": "single-dose", "example_price": 330},
+                      {"mg": 420, "vial": "multi-dose", "example_price": 900}]}
+      ]
+    },
+    {
+      "id": "bevacizumab",
+      "name": "Bevacizumab",
+      "dose": {"basis": "mg/kg", "value": 15, "weight_kg": 80, "bsa_m2": 1.9},
+      "products": [
+        {"name": "Avastin", "hcpcs": "J9035", "reference": true,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 690},
+                      {"mg": 400, "vial": "single-dose", "example_price": 2760}]},
+        {"name": "Alymsys", "hcpcs": "Q5126", "reference": false,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 230},
+                      {"mg": 400, "vial": "single-dose", "example_price": 920}]},
+        {"name": "Avzivi", "hcpcs": null, "reference": false,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 200},
+                      {"mg": 400, "vial": "single-dose", "example_price": 800}]},
+        {"name": "Jobevne", "hcpcs": "Q5160", "reference": false,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 180},
+                      {"mg": 400, "vial": "single-dose", "example_price": 720}]},
+        {"name": "Mvasi", "hcpcs": "Q5107", "reference": false,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 215},
+                      {"mg": 400, "vial": "single-dose", "example_price": 860}]},
+        {"name": "Vegzelma", "hcpcs": "Q5129", "reference": false, "example_rebate_pct": 2,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 260},
+                      {"mg": 400, "vial": "single-dose", "example_price": 1040}]},
+        {"name": "Zirabev", "hcpcs": "Q5118", "reference": false,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 190},
+                      {"mg": 400, "vial": "single-dose", "example_price": 760}]}
+      ]
+    },
+    {
+      "id": "rituximab",
+      "name": "Rituximab (IV)",
+      "dose": {"basis": "mg/m2", "value": 375, "weight_kg": 80, "bsa_m2": 1.9},
+      "products": [
+        {"name": "Rituxan", "hcpcs": "J9312", "reference": true,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 880},
+                      {"mg": 500, "vial": "single-dose", "example_price": 4400}]},
+        {"name": "Truxima", "hcpcs": "Q5115", "reference": false,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 440},
+                      {"mg": 500, "vial": "single-dose", "example_price": 2200}]},
+        {"name": "Ruxience", "hcpcs": "Q5119", "reference": false,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 370},
+                      {"mg": 500, "vial": "single-dose", "example_price": 1850}]},
+        {"name": "Riabni", "hcpcs": "Q5123", "reference": false,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 400},
+                      {"mg": 500, "vial": "single-dose", "example_price": 2000}]}
+      ]
+    },
+    {
+      "id": "pegfilgrastim",
+      "name": "Pegfilgrastim",
+      "dose": {"basis": "flat", "value": 6, "weight_kg": 80, "bsa_m2": 1.9},
+      "products": [
+        {"name": "Neulasta", "hcpcs": "J2506", "reference": true,
+         "packages": [{"mg": 6, "vial": "single-dose", "example_price": 3900}]},
+        {"name": "Armlupeg", "hcpcs": "Q5169", "reference": false,
+         "packages": [{"mg": 6, "vial": "single-dose", "example_price": 500}]},
+        {"name": "Fulphila", "hcpcs": "Q5108", "reference": false,
+         "packages": [{"mg": 6, "vial": "single-dose", "example_price": 720}]},
+        {"name": "Fylnetra", "hcpcs": "Q5130", "reference": false,
+         "packages": [{"mg": 6, "vial": "single-dose", "example_price": 650}]},
+        {"name": "Nyvepria", "hcpcs": "Q5122", "reference": false,
+         "packages": [{"mg": 6, "vial": "single-dose", "example_price": 560}]},
+        {"name": "Stimufend", "hcpcs": "Q5127", "reference": false,
+         "packages": [{"mg": 6, "vial": "single-dose", "example_price": 820}]},
+        {"name": "Udenyca", "hcpcs": "Q5111", "reference": false,
+         "packages": [{"mg": 6, "vial": "single-dose", "example_price": 1000}]},
+        {"name": "Ziextenzo", "hcpcs": "Q5120", "reference": false,
+         "packages": [{"mg": 6, "vial": "single-dose", "example_price": 600}]}
+      ]
+    },
+    {
+      "id": "infliximab",
+      "name": "Infliximab",
+      "dose": {"basis": "mg/kg", "value": 5, "weight_kg": 80, "bsa_m2": 1.9},
+      "products": [
+        {"name": "Remicade", "hcpcs": "J1745", "reference": true,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 700}]},
+        {"name": "Infliximab (unbranded)", "hcpcs": "J1745", "reference": false,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 300}]},
+        {"name": "Avsola", "hcpcs": "Q5121", "reference": false,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 280}]},
+        {"name": "Inflectra", "hcpcs": "Q5103", "reference": false,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 420}]},
+        {"name": "Renflexis", "hcpcs": "Q5104", "reference": false,
+         "packages": [{"mg": 100, "vial": "single-dose", "example_price": 250}]}
+      ]
+    }
+  ]
+}

@@ -51,6 +51,9 @@ data/
   asp.duckdb         DuckDB database built from raw/ (rebuildable from raw/)
   manifest.json      One entry per downloaded file: name, URL, quarter,
                      CMS posted date, download date, SHA-256 hash
+  ncr_markets.json   Hand-maintained markets for the NCR calculator page:
+                     products, HCPCS codes, packages, example contract
+                     prices. No payment limits: those come from asp.duckdb
 scripts/             Python scripts: download, load, build site
 site/                Website source: Jinja2 templates in site/templates/,
                      the stylesheet site/style.css and site/charts.js, and

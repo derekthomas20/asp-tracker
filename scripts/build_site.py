@@ -16,11 +16,14 @@ Pages written to public/:
     search.html         find a code by code or drug name
     downloads.html      the full history as one CSV (in downloads/)
     about.html          where the data comes from and what it means
+    tools/ncr-calculator/index.html
+                        biosimilar net cost recovery calculator: markets from
+                        data/ncr_markets.json, payment limits from CMS
     search-index.js     the list behind the header search suggestions
     charts.js           draws the Chart.js line charts in the site's style
 
-Templates are in site/templates; site/style.css, site/charts.js and
-site/static/ (logo, favicons) are copied as they are. The layout follows the
+Templates are in site/templates; site/style.css, site/charts.js, site/ncr.js
+and site/static/ (logo, favicons) are copied as they are. The layout follows the
 "Broadsheet" design in design/; colors and fonts are the Rxcurve brand.
 public/ is deleted and rebuilt from scratch on every run.
 
@@ -54,6 +57,9 @@ MANIFEST_PATH = ROOT / "data" / "manifest.json"
 TEMPLATES = ROOT / "site" / "templates"
 STYLESHEET = ROOT / "site" / "style.css"
 CHART_SCRIPT = ROOT / "site" / "charts.js"
+NCR_SCRIPT = ROOT / "site" / "ncr.js"
+NCR_MARKETS = ROOT / "data" / "ncr_markets.json"  # hand-maintained; holds no prices
+NCR_PAGE = "tools/ncr-calculator/index.html"
 STATIC = ROOT / "site" / "static"  # logo and favicons
 OUT = ROOT / "public"
 CSV_NAME = "asp-payment-limits-history.csv"
@@ -438,6 +444,91 @@ def compare(latest: dict[str, dict], prior: dict[str, dict]) -> dict:
 
 
 # --------------------------------------------------------------------------
+# NCR calculator: markets from data/ncr_markets.json, limits from CMS
+# --------------------------------------------------------------------------
+
+DOSE_BASIS = {"mg/kg": "mgkg", "mg/m2": "mgm2", "flat": "flat"}  # names used in site/ncr.js
+VIAL_TYPE = {"single-dose": "SDV", "multi-dose": "MDV"}
+
+
+def dosage_mg(text: str | None) -> Decimal | None:
+    """Milligrams in one billing unit, from CMS dosage text like '10 MG' or
+    '0.5 MG'. None if the text is not in that form."""
+    m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*MG\s*", text or "", re.IGNORECASE)
+    return Decimal(m.group(1)) if m else None
+
+
+def build_ncr(latest: dict[str, dict], warn) -> list[dict]:
+    """Each configured market with its products' CMS payment limits and
+    billing units from the latest quarter. A code missing from the CMS file
+    does not stop the build: the page marks it and lets the visitor type a
+    limit. Things that would make the math wrong do stop it."""
+    with NCR_MARKETS.open(encoding="utf-8") as f:
+        config = json.load(f)
+    markets = []
+    for mk in config["markets"]:
+        where = f"{NCR_MARKETS.relative_to(ROOT)}, market {mk['id']}"
+        if mk["dose"]["basis"] not in DOSE_BASIS:
+            raise SystemExit(f"STOPPED: {where}: dose basis {mk['dose']['basis']!r} "
+                             f"is not one of {list(DOSE_BASIS)}.")
+        products, unit_mg = [], {}
+        for pr in mk["products"]:
+            code = pr["hcpcs"]
+            row = latest.get(code) if code else None
+            entry = {"key": slugify(pr["name"]), "name": pr["name"], "hcpcs": code,
+                     "reference": bool(pr["reference"]),
+                     "example_rebate_pct": pr.get("example_rebate_pct", 0),
+                     "cms_limit": None, "cms_dosage": None, "cms_description": None}
+            if not code:
+                entry["status"] = "no_code"
+            elif row is None:
+                entry["status"] = "missing"
+                warn(f"NCR calculator: {code} ({pr['name']}, {mk['id']}) is not in the latest CMS file. "
+                     "The page says so and lets visitors type a limit.")
+            else:
+                mg = dosage_mg(row["hcpcs_dosage"])
+                if mg is None:
+                    raise SystemExit(f"STOPPED: {where}: CMS dosage {row['hcpcs_dosage']!r} for {code} "
+                                     "is not in the form '<number> MG'.")
+                unit_mg.setdefault(mg, []).append(code)
+                entry.update(cms_dosage=row["hcpcs_dosage"],
+                             cms_description=display_text(row["short_description"]))
+                if row["payment_limit"] is None:
+                    entry["status"] = "no_limit"
+                    warn(f"NCR calculator: {code} ({pr['name']}) has no payment limit in the latest "
+                         f"CMS file ({row['payment_limit_text']!r}).")
+                else:
+                    entry["status"] = "cms"
+                    entry["cms_limit"] = plain_decimal(row["payment_limit"])  # exactly as CMS gives it
+            entry["packages"] = []
+            for pk in pr["packages"]:
+                if pk["vial"] not in VIAL_TYPE:
+                    raise SystemExit(f"STOPPED: {where}: vial {pk['vial']!r} is not one of {list(VIAL_TYPE)}.")
+                entry["packages"].append({"key": f"{pk['mg']}-{VIAL_TYPE[pk['vial']]}", "mg": pk["mg"],
+                                          "type": VIAL_TYPE[pk["vial"]], "example_price": pk["example_price"]})
+            products.append(entry)
+        # The calculator rounds a dose to whole billing units of one size per
+        # market, so every product's code must use the same unit.
+        if len(unit_mg) != 1:
+            found = "; ".join(f"{u} mg: {', '.join(c)}" for u, c in unit_mg.items()) or "no codes in the CMS file"
+            raise SystemExit(f"STOPPED: {where}: products need one billing unit per market ({found}).")
+        (unit,) = unit_mg
+        for entry in products:
+            for pk in entry["packages"]:
+                units = Decimal(str(pk["mg"])) / unit
+                if units != units.to_integral_value():
+                    warn(f"NCR calculator: {entry['name']} {pk['mg']} mg is not a whole number of "
+                         f"{unit} mg billing units ({units.normalize():f} units).")
+                pk["units"] = float(units)
+        markets.append({"id": mk["id"], "name": mk["name"], "unit_mg": float(unit),
+                        "unit_label": f"{unit.normalize():f} mg",
+                        "dose": {"basis": DOSE_BASIS[mk["dose"]["basis"]], "value": mk["dose"]["value"],
+                                 "weight": mk["dose"]["weight_kg"], "bsa": mk["dose"]["bsa_m2"]},
+                        "products": products})
+    return markets
+
+
+# --------------------------------------------------------------------------
 # Writing the site
 # --------------------------------------------------------------------------
 
@@ -554,6 +645,7 @@ def main() -> int:
 
     # ---- Biosimilar groups (owner's sheet; prices from CMS) ----------------
     groups = build_groups(group_rows, latest, recent_limits, warnings.append)
+    ncr_markets = build_ncr(latest, warnings.append)
     group_of = {}
     for grp in groups:
         for e in [grp["ref"], *grp["bios"]]:
@@ -684,6 +776,7 @@ def main() -> int:
     (OUT / "downloads").mkdir()
     shutil.copy2(STYLESHEET, OUT / "style.css")
     shutil.copy2(CHART_SCRIPT, OUT / "charts.js")
+    shutil.copy2(NCR_SCRIPT, OUT / "ncr.js")
     shutil.copytree(STATIC, OUT / "static")
 
     # The header search box suggests codes as you type. Its list is written as
@@ -698,10 +791,12 @@ def main() -> int:
     env = make_env()
     common = {
         # The Biosimilars link appears once at least one group is published.
-        "nav": NAV[:3] + ([("biosimilars.html", "Biosimilars")] if groups else []) + NAV[3:],
-        # Added to the style.css and charts.js links so browsers fetch them
+        "nav": NAV[:3] + ([("biosimilars.html", "Biosimilars")] if groups else [])
+               + [(NCR_PAGE, "NCR calculator")] + NAV[3:],
+        # Added to the style.css and script links so browsers fetch them
         # again whenever they change instead of using an old saved copy.
-        "asset_version": hashlib.sha256(STYLESHEET.read_bytes() + CHART_SCRIPT.read_bytes()).hexdigest()[:10],
+        "asset_version": hashlib.sha256(STYLESHEET.read_bytes() + CHART_SCRIPT.read_bytes()
+                                        + NCR_SCRIPT.read_bytes()).hexdigest()[:10],
         "latest_q": latest_q,
         "source_page": manifest["source_page"],
         "top_n": TOP_N,
@@ -714,6 +809,7 @@ def main() -> int:
     def write(path: str, template: str, **context) -> None:
         root = "../" * path.count("/")
         page = env.get_template(template).render(root=root, current_page=path, **common, **context)
+        (OUT / path).parent.mkdir(parents=True, exist_ok=True)
         (OUT / path).write_text(page, encoding="utf-8")
 
     write("index.html", "index.html", s=summary, lead=lead, around=around, co=coinsurance)
@@ -747,6 +843,10 @@ def main() -> int:
           csv_kb=round(csv_path.stat().st_size / 1024), first_q=quarters[0],
           n_versions=len({(r["source_file"]) for r in rows}))
 
+    ncr_data = {"quarter": quarter_label(latest_q), "markets": ncr_markets}
+    write(NCR_PAGE, "ncr_calculator.html", ncr_data=ncr_data, sales_q=quarter_offset(latest_q, -2))
+    ncr_codes = {p["hcpcs"] for m in ncr_markets for p in m["products"] if p["status"] == "cms"}
+
     write("about.html", "about.html", sales_q=quarter_offset(latest_q, -2),
           last_download=last_download.date(), built=date.today(), first_q=quarters[0])
 
@@ -760,6 +860,7 @@ def main() -> int:
           f"{plain_percent(str(usual_co))} ({usual_co_n:,} codes)")
     print(f"  biosimilar groups published: {len(groups)}"
           + (f" (from {', '.join(groups_source)})" if groups_source else " (no sheet snapshot loaded)"))
+    print(f"  NCR calculator: {len(ncr_markets)} markets, {len(ncr_codes)} codes priced from {latest_q}")
     if mismatch:
         print(f"\nNOTE: these codes have a reduced coinsurance percentage or the CMS note "
               f"'{INFLATION_NOTE}', but not both: {', '.join(mismatch)}")

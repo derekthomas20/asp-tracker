@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Biosimilar net cost recovery calculator{% endblock %}
+{% block content %}
+<div class="ncr">
+<span class="kicker">Tools · Biosimilars</span>
+<h1>Biosimilar net cost recovery</h1>
+<p class="dek">Compare what each product in a market recovers after acquisition cost, per billing unit and per administered dose.</p>
+<p class="note">Payment limits are prefilled from the CMS {{ latest_q|quarter }} file. They reflect sales from about two quarters earlier ({{ sales_q|quarter }}), so today’s prices may already differ.
+This is an estimate for planning. It is not billing, coding or financial advice.</p>
+
+<noscript><p class="callout">This calculator needs JavaScript turned on in your browser.</p></noscript>
+
+<section class="ncr-panel" aria-labelledby="setupH">
+  <h2 id="setupH">Market, dose and payer</h2>
+  <div class="ncr-controls">
+    <fieldset><legend>Market</legend>
+      <label class="ncr-f">Molecule<select id="market"></select></label>
+      <div class="ncr-calc" id="unitLine"></div>
+    </fieldset>
+    <fieldset><legend>Dose</legend>
+      <div class="ncr-row2">
+        <label class="ncr-f">Basis<select id="doseBasis"><option value="mgkg">mg/kg</option><option value="mgm2">mg/m²</option><option value="flat">Flat mg</option></select></label>
+        <label class="ncr-f" id="doseValL"><span>Dose</span><input id="doseVal" type="number" step="0.1" min="0" inputmode="decimal"></label>
+      </div>
+      <div class="ncr-row2">
+        <label class="ncr-f" id="wtL">Weight (kg)<input id="weight" type="number" step="0.1" min="0" inputmode="decimal"></label>
+        <label class="ncr-f" id="bsaL">BSA (m²)<input id="bsa" type="number" step="0.01" min="0" inputmode="decimal"></label>
+      </div>
+      <div class="ncr-calc" id="doseLine"></div>
+    </fieldset>
+    <fieldset><legend>Payer mix</legend>
+      <div class="ncr-row2">
+        <label class="ncr-f">Medicare share %<input id="medShare" type="number" min="0" max="100" step="1" inputmode="decimal"></label>
+        <label class="ncr-f">Commercial pays % of limit<input id="commPct" type="number" min="0" step="1" inputmode="decimal"></label>
+      </div>
+      <label class="ncr-tog"><input id="seq" type="checkbox"><span>Apply 2% sequestration<small>Cuts Medicare’s 80% share of the payment</small></span></label>
+      <label class="ncr-f">Payment limit change: <span id="erosionOut"></span><input id="erosion" type="range" min="-30" max="10" step="1"></label>
+    </fieldset>
+    <fieldset><legend>Waste and volume</legend>
+      <label class="ncr-tog"><input id="wasteBill" type="checkbox"><span>Payers pay for discarded drug (JW)<small>Single-dose vials only</small></span></label>
+      <label class="ncr-tog"><input id="mdvReuse" type="checkbox"><span>Reuse multi-dose leftovers<small>Enough patients to use an opened vial within its in-use window</small></span></label>
+      <label class="ncr-f">Administrations per year<input id="annual" type="number" min="0" step="1" inputmode="numeric"></label>
+    </fieldset>
+  </div>
+</section>
+
+<section class="ncr-panel" aria-labelledby="verdictH">
+  <div class="ncr-head"><h2 id="verdictH">Net cost recovery per dose</h2><p id="verdictSub"></p></div>
+  <div class="ncr-verdict">
+    <div class="ncr-lead" id="leadCard"></div>
+    <div class="ncr-bars" id="bars"></div>
+  </div>
+</section>
+
+<section class="ncr-panel" aria-labelledby="priceH">
+  <div class="ncr-head"><h2 id="priceH">Contract pricing by package</h2>
+    <p>Payment limits per billing unit come from the CMS {{ latest_q|quarter }} file; you can change any of them. Enter your contract price per package. Billing units are package strength divided by the HCPCS unit.</p></div>
+  <div class="ncr-actions">
+    <button type="button" id="loadExamples">Load example prices</button>
+    <button type="button" class="quiet" id="clearPrices">Clear prices</button>
+    <span class="ncr-toast" id="toast" role="status"></span>
+  </div>
+  <p class="callout" id="exampleNote" hidden></p>
+  <p class="ncr-private">Your prices and settings are saved only in this browser. They never leave it.</p>
+  <div class="ncr-scroll">
+    <table class="ncr-table">
+      <thead><tr>
+        <th>Package</th><th class="num">Billing units</th><th>Vial</th><th class="num">Contract $ / pkg</th>
+        <th class="num">Net cost / unit</th><th class="num">Paid / unit</th><th class="num">NCR / unit</th><th class="num">Margin on cost</th>
+      </tr></thead>
+      <tbody id="priceBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="ncr-panel" aria-labelledby="doseH">
+  <div class="ncr-head"><h2 id="doseH">Per-dose detail</h2>
+    <p>Each product uses the vial combination with the least discarded drug, then the lowest cost. Billed units include discarded drug only when JW billing is on.</p></div>
+  <div class="ncr-scroll">
+    <table class="ncr-table">
+      <thead><tr><th>Product</th><th>Vials used</th><th class="num">Administered</th><th class="num">Discarded</th><th class="num">Billed units</th>
+        <th class="num">Acquisition</th><th class="num">Payment</th><th class="num">NCR / dose</th><th class="num">NCR / year</th><th class="num">vs. leader / year</th></tr></thead>
+      <tbody id="doseBody"></tbody>
+    </table>
+  </div>
+  <div class="ncr-actions"><button type="button" class="quiet" id="copyBtn">Copy results as table</button><span class="ncr-toast" id="copyToast" role="status"></span></div>
+</section>
+
+<section class="ncr-panel" aria-labelledby="beH">
+  <div class="ncr-head"><h2 id="beH">Breakeven contract price</h2>
+    <p>The contract price each package would need for its NCR per unit to match the leader’s best package. Use it as a negotiation target.</p></div>
+  <div class="ncr-scroll">
+    <table class="ncr-table">
+      <thead><tr><th>Product</th><th>Package</th><th class="num">Current $ / pkg</th><th class="num">Breakeven $ / pkg</th><th class="num">Change needed</th><th></th></tr></thead>
+      <tbody id="beBody"></tbody>
+    </table>
+  </div>
+
+  <details>
+    <summary>How the numbers are calculated</summary>
+    <div class="ncr-method">
+      <div class="ncr-formula">Billing units / package = package strength (mg) ÷ HCPCS unit (mg)
+Net cost / unit       = contract price × (1 − rebate %) ÷ billing units
+Paid / unit           = payment limit × (1 + limit change) ×
+                        [Medicare share × (1 − 0.8 × 2% if sequestration) + commercial share × commercial %]
+NCR / unit            = paid / unit − net cost / unit
+NCR / dose            = paid / unit × billed units − acquisition cost of the vials used</div>
+      <p><strong>Payment limit.</strong> Each product’s per-unit payment limit is prefilled from the CMS {{ latest_q|quarter }} quarterly file by its HCPCS code. For a reference product it is ASP + 6%. For a qualifying biosimilar it is the biosimilar’s ASP plus 8% of the reference product’s ASP, so a biosimilar can pay more per unit than its own price suggests. Confirm each product’s add-on period. Limits reflect sales from about two quarters earlier, so use the limit-change slider to test erosion.</p>
+      <p><strong>Doses.</strong> Doses round up to whole billing units. Without leftover reuse, multi-dose vials are drawn first so any waste falls on single-dose vials, where JW billing can apply. With reuse, single-dose vials are drawn first and the multi-dose remainder is saved, so only the drug actually used is costed. Vial selection minimizes discarded drug rather than maximizing billable waste.</p>
+      <p><strong>Not modeled.</strong> Patient coinsurance collection, manufacturer discarded-drug refunds, 340B pricing, administration fees, and payer step or preferred-product rules. A payer that requires one product makes NCR moot for those patients.</p>
+      <p><strong>Products and packages</strong> come from the site’s market list, checked by hand; it is not a CMS file. Example prices are made up for illustration and are not real contracts.</p>
+    </div>
+  </details>
+</section>
+</div>
+<script type="application/json" id="ncr-data">{{ ncr_data|tojson }}</script>
+{% endblock %}
+{% block scripts %}
+<script src="{{ root }}ncr.js?v={{ asset_version }}"></script>
+{% endblock %}
