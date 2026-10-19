@@ -28,7 +28,7 @@ DATA.markets.forEach(d => {
   markets[d.id] = {
     // unitMg and k.mg keep the prototype's names but are in the market's
     // measure (mg, mcg or units), so the ported math needs no change.
-    id: d.id, name: d.name, unitMg: d.unit_size, unitName: d.unit_name, unitLabel: d.unit_label, doseSource: d.dose_source,
+    id: d.id, name: d.name, unitMg: d.unit_size, unitName: d.unit_name, unitLabel: d.unit_label,
     dose: Object.assign({}, d.dose, s.dose || {}),
     example: !!s.example,
     products: d.products.map(p => {
@@ -146,7 +146,6 @@ function renderControls() {
   $("wasteBill").checked = s.wasteBill; $("mdvReuse").checked = s.mdvReuse; $("annual").value = s.annual;
   $("is340").checked = s.is340; $("share340").value = s.share340;
   $("unitLine").innerHTML = `HCPCS billing unit: <b>${esc(m.unitLabel)}</b> (CMS ${esc(DATA.quarter)})`;
-  $("doseSource").textContent = "Default dose: " + m.doseSource + ". Change it to match your patients.";
   doseVis();
 }
 function doseVis() {
