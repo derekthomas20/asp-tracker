@@ -5,8 +5,10 @@ Prints:
      versions if CMS posted more than one).
   2. Five random rows from the latest quarter, with the file and line number
      each came from, so you can open the CMS CSV and compare by hand.
-  3. Any HCPCS code in data/ncr_markets.json (the NCR calculator's markets)
-     that is missing from the latest quarter.
+  3. NCR calculator coverage: every verified code in the biosimilar groups
+     sheet that is missing from the latest quarter's payment limits or has
+     no packages in its NDC-HCPCS crosswalk, and any sheet molecule with no
+     market in data/ncr_markets.json.
 
 Usage (from the repository root):
     .venv\\Scripts\\python scripts/check.py
@@ -68,6 +70,12 @@ def main() -> int:
     latest_codes = {r[0] for r in con.execute(
         "SELECT DISTINCT hcpcs_code FROM payment_limits WHERE effective_quarter = ? AND is_current",
         [latest]).fetchall()}
+    crosswalk_codes = {r[0] for r in con.execute(
+        "SELECT DISTINCT hcpcs_code FROM crosswalks "
+        "WHERE effective_quarter = ? AND is_current AND crosswalk_type = 'ASP'", [latest]).fetchall()}
+    sheet = con.execute(
+        "SELECT molecule, hcpcs_code, brand_names FROM biosimilar_groups WHERE verified ORDER BY source_row"
+    ).fetchall()
     con.close()
 
     picks = sorted(random.Random(args.seed).sample(rows, min(args.rows, len(rows))), key=lambda r: r[6])
@@ -81,18 +89,25 @@ def main() -> int:
     print("and check that HCPCS code, description, dosage and payment limit match exactly.")
 
     with NCR_MARKETS.open(encoding="utf-8") as f:
-        markets = json.load(f)["markets"]
-    configured = [(m["id"], p["name"], p["hcpcs"]) for m in markets for p in m["products"]]
-    missing = [(mid, name, code) for mid, name, code in configured if code and code not in latest_codes]
-    no_code = [(mid, name) for mid, name, code in configured if not code]
-    print(f"\nNCR calculator codes ({NCR_MARKETS.relative_to(ROOT)}) checked against {latest}")
-    print(f"  {len(configured) - len(no_code) - len(missing)} of {len(configured) - len(no_code)} products with a code are in the file")
-    for mid, name, code in missing:
-        print(f"  MISSING  {code:<6} {name} ({mid})")
-    for mid, name in no_code:
-        print(f"  no code  {name} ({mid}); visitors type its limit")
-    if not missing:
-        print("  No configured code is missing.")
+        market_molecules = {m["molecule"] for m in json.load(f)["markets"]}
+    print(f"\nNCR calculator coverage, checked against {latest}")
+    print(f"  {len(sheet)} verified codes in the biosimilar groups sheet")
+    problems = 0
+    for molecule, code, brands in sheet:
+        if code not in latest_codes:
+            print(f"  MISSING  {code:<6} {brands} ({molecule}): not in the {latest} payment limit file")
+            problems += 1
+        elif code not in crosswalk_codes:
+            print(f"  MISSING  {code:<6} {brands} ({molecule}): no packages in the {latest} crosswalk")
+            problems += 1
+    for molecule in sorted({m for m, _, _ in sheet} - market_molecules):
+        print(f"  NO MARKET  {molecule}: add it to {NCR_MARKETS.relative_to(ROOT)}")
+        problems += 1
+    for molecule in sorted(market_molecules - {m for m, _, _ in sheet}):
+        print(f"  NOT IN SHEET  {molecule}: a calculator market with no verified sheet rows")
+        problems += 1
+    if not problems:
+        print("  Every verified code is in the CMS files, and every molecule has a calculator market.")
     return 0
 
 

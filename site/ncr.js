@@ -8,7 +8,7 @@
 (function () {
 "use strict";
 const DATA = JSON.parse(document.getElementById("ncr-data").textContent);
-const KEY = "rxcurve-ncr-v1";
+const KEY = "rxcurve-ncr-v2";
 const $ = id => document.getElementById(id);
 
 /* ---------- saved entries (this browser only) ---------- */
@@ -24,7 +24,9 @@ DATA.markets.forEach(d => {
   const s = (saved.markets && saved.markets[d.id]) || {};
   const sp = s.products || {};
   markets[d.id] = {
-    id: d.id, name: d.name, unitMg: d.unit_mg, unitLabel: d.unit_label,
+    // unitMg and k.mg keep the prototype's names but are in the market's
+    // measure (mg, mcg or units), so the ported math needs no change.
+    id: d.id, name: d.name, unitMg: d.unit_size, unitName: d.unit_name, unitLabel: d.unit_label, doseSource: d.dose_source,
     dose: Object.assign({}, d.dose, s.dose || {}),
     example: !!s.example,
     products: d.products.map(p => {
@@ -36,7 +38,7 @@ DATA.markets.forEach(d => {
         exampleRebate: p.example_rebate_pct,
         limit: override !== null ? override : (p.cms_limit || ""),
         rebate: typeof e.rebate === "string" ? e.rebate : "",
-        pkgs: p.packages.map(k => ({key: k.key, mg: k.mg, type: k.type, examplePrice: k.example_price,
+        pkgs: p.packages.map(k => ({key: k.key, mg: k.amount, type: k.type, examplePrice: k.example_price,
           price: typeof prices[k.key] === "string" ? prices[k.key] : ""}))
       };
     })
@@ -75,6 +77,7 @@ const money = (v, d = 2) => (v < 0 ? "−$" : "$") + Math.abs(v).toLocaleString(
 const signed = (v, d = 0) => (v > 0 ? "+" : "") + money(v, d);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[c]));
 const units = (m, k) => n(k.mg) / m.unitMg;
+const amt = (m, v) => n(v).toLocaleString("en-US", {maximumFractionDigits: 3}) + " " + m.unitName;
 const vialName = k => k.type === "MDV" ? "Multi-dose" : "Single-dose";
 const enterPrice = '<span class="ncr-enter">Enter price</span>';
 const enterLimit = '<span class="ncr-enter">Enter limit</span>';
@@ -109,7 +112,7 @@ function bestCombo(p,m,D){
     if(!best||r.discarded<best.discarded-1e-9||(Math.abs(r.discarded-best.discarded)<1e-9&&(r.cost<best.cost-1e-9||(Math.abs(r.cost-best.cost)<1e-9&&r.vials<best.vials)))) best=r;
   };
   (function rec(i){if(guard>250000)return;if(i===pk.length){guard++;evalC();return;}for(let c=0;c<=maxC[i];c++){counts[i]=c;rec(i+1);}})(0);
-  if(best) best.desc=pk.map((k,i)=>best.counts[i]?best.counts[i]+' × '+k.mg+' mg'+(k.type==='MDV'?' MDV':''):'').filter(Boolean).join(' + ');
+  if(best) best.desc=pk.map((k,i)=>best.counts[i]?best.counts[i]+' × '+amt(m,k.mg)+(k.type==='MDV'?' MDV':''):'').filter(Boolean).join(' + ');
   return best;
 }
 
@@ -123,12 +126,14 @@ function renderControls() {
   $("medShare").value = s.medShare; $("commPct").value = s.commPct; $("seq").checked = s.seq; $("erosion").value = s.erosion;
   $("wasteBill").checked = s.wasteBill; $("mdvReuse").checked = s.mdvReuse; $("annual").value = s.annual;
   $("unitLine").innerHTML = `HCPCS billing unit: <b>${esc(m.unitLabel)}</b> (CMS ${esc(DATA.quarter)})`;
+  $("doseSource").textContent = "Default dose: " + m.doseSource + ". Change it to match your patients.";
   doseVis();
 }
 function doseVis() {
   const b = M().dose.basis;
   $("wtL").hidden = b !== "mgkg"; $("bsaL").hidden = b !== "mgm2";
-  $("doseValL").firstElementChild.textContent = b === "mgkg" ? "Dose (mg/kg)" : b === "mgm2" ? "Dose (mg/m²)" : "Dose (mg)";
+  const u = M().unitName;
+  $("doseValL").firstElementChild.textContent = b === "mgkg" ? `Dose (${u}/kg)` : b === "mgm2" ? `Dose (${u}/m²)` : `Dose (${u})`;
 }
 
 function renderPricing() {
@@ -143,10 +148,10 @@ function renderPricing() {
       <span class="ncr-status" id="st-${p.key}"></span>
     </div></td></tr>`;
     const rows = p.pkgs.map(k => `<tr id="row-${p.key}-${k.key}">
-      <td>${esc(k.mg)} mg</td>
+      <td>${esc(amt(m, k.mg))}</td>
       <td class="num" data-o="units"></td>
       <td>${vialName(k)}</td>
-      <td class="num"><input class="ncr-price" type="number" step="0.01" min="0" inputmode="decimal" data-p="${p.key}" data-k="${k.key}" data-f="price" value="${esc(k.price)}" placeholder="Enter price" aria-label="${esc(p.name)} ${esc(k.mg)} mg contract price per package"></td>
+      <td class="num"><input class="ncr-price" type="number" step="0.01" min="0" inputmode="decimal" data-p="${p.key}" data-k="${k.key}" data-f="price" value="${esc(k.price)}" placeholder="Enter price" aria-label="${esc(p.name)} ${esc(amt(m, k.mg))} contract price per package"></td>
       <td class="num" data-o="net"></td><td class="num" data-o="pay"></td><td class="num" data-o="ncr"></td><td class="num" data-o="mg%"></td></tr>`).join("");
     return head + rows;
   }).join("");
@@ -176,7 +181,7 @@ function update() {
   const m = M(), s = state.settings;
   $("erosionOut").textContent = (s.erosion > 0 ? "+" : "") + s.erosion + "%";
   const mg = doseMg(m), D = doseUnits(m);
-  $("doseLine").innerHTML = `<b>${mg.toLocaleString("en-US", {maximumFractionDigits: 1})} mg</b> = <b>${D}</b> billing units`;
+  $("doseLine").innerHTML = `<b>${esc(amt(m, mg))}</b> = <b>${D}</b> billing units`;
   $("exampleNote").hidden = !m.example;
   $("exampleNote").textContent = `Example prices are loaded for ${m.name}. They are made up for illustration and are not real contracts.`;
 
@@ -253,7 +258,7 @@ function update() {
       return p.pkgs.filter(k => units(m, k) > 0).map(k => {
         const u = units(m, k), isLead = k === bestUnit.k;
         const be = rf > 0 ? (pay - target) * u / rf : 0, cur = n(k.price), diff = be - cur;
-        const pkg = `${esc(k.mg)} mg ${k.type === "MDV" ? "multi-dose" : "single-dose"}`;
+        const pkg = `${esc(amt(m, k.mg))} ${k.type === "MDV" ? "multi-dose" : "single-dose"}`;
         if (!hasLimit(p)) return `<tr><td><b>${esc(p.name)}</b></td><td>${pkg}</td><td class="num">${priced(k) ? money(cur) : enterPrice}</td><td class="num">${enterLimit}</td><td class="num">—</td><td></td></tr>`;
         return `<tr class="${isLead ? "ncr-best" : ""}"><td><b>${esc(p.name)}</b></td><td>${pkg}</td>
           <td class="num">${priced(k) ? money(cur) : enterPrice}</td><td class="num">${be <= 0 ? '<span class="ncr-neg">Not reachable</span>' : money(be)}</td>
@@ -288,7 +293,7 @@ $("priceBody").addEventListener("click", e => {
 
 $("loadExamples").addEventListener("click", () => {
   const m = M();
-  m.products.forEach(p => { p.rebate = p.exampleRebate ? String(p.exampleRebate) : ""; p.pkgs.forEach(k => { k.price = String(k.examplePrice); }); });
+  m.products.forEach(p => { p.rebate = p.exampleRebate ? String(p.exampleRebate) : ""; p.pkgs.forEach(k => { k.price = k.examplePrice == null ? "" : String(k.examplePrice); }); });
   m.example = true;
   renderPricing(); update();
   toast("toast", "Example prices loaded for " + m.name + ".");

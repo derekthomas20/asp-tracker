@@ -17,8 +17,9 @@ Pages written to public/:
     downloads.html      the full history as one CSV (in downloads/)
     about.html          where the data comes from and what it means
     tools/ncr-calculator/index.html
-                        biosimilar net cost recovery calculator: markets from
-                        data/ncr_markets.json, payment limits from CMS
+                        biosimilar net cost recovery calculator: products from
+                        the sheet, packages from the CMS crosswalk, limits from
+                        CMS, default doses from data/ncr_markets.json
     search-index.js     the list behind the header search suggestions
     charts.js           draws the Chart.js line charts in the site's style
 
@@ -58,7 +59,7 @@ TEMPLATES = ROOT / "site" / "templates"
 STYLESHEET = ROOT / "site" / "style.css"
 CHART_SCRIPT = ROOT / "site" / "charts.js"
 NCR_SCRIPT = ROOT / "site" / "ncr.js"
-NCR_MARKETS = ROOT / "data" / "ncr_markets.json"  # hand-maintained; holds no prices
+NCR_MARKETS = ROOT / "data" / "ncr_markets.json"  # hand-maintained doses; holds no prices
 NCR_PAGE = "tools/ncr-calculator/index.html"
 STATIC = ROOT / "site" / "static"  # logo and favicons
 OUT = ROOT / "public"
@@ -444,87 +445,149 @@ def compare(latest: dict[str, dict], prior: dict[str, dict]) -> dict:
 
 
 # --------------------------------------------------------------------------
-# NCR calculator: markets from data/ncr_markets.json, limits from CMS
+# NCR calculator: products from the biosimilar groups sheet, packages from
+# the CMS crosswalk, limits from the CMS payment limit file, default doses
+# from data/ncr_markets.json
 # --------------------------------------------------------------------------
 
-DOSE_BASIS = {"mg/kg": "mgkg", "mg/m2": "mgm2", "flat": "flat"}  # names used in site/ncr.js
-VIAL_TYPE = {"single-dose": "SDV", "multi-dose": "MDV"}
+DOSE_BASIS = {"per kg": "mgkg", "per m2": "mgm2", "flat": "flat"}  # names used in site/ncr.js
+UNIT_NAMES = {"MG": "mg", "MCG": "mcg", "UNIT": "units", "UNITS": "units"}
 
 
-def dosage_mg(text: str | None) -> Decimal | None:
-    """Milligrams in one billing unit, from CMS dosage text like '10 MG' or
-    '0.5 MG'. None if the text is not in that form."""
-    m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*MG\s*", text or "", re.IGNORECASE)
-    return Decimal(m.group(1)) if m else None
+def billing_unit(text: str | None) -> tuple[Decimal, str] | None:
+    """(size, measure) of one billing unit from CMS dosage text such as
+    '10 MG', '0.5 MG', '1 MCG' or '1000 UNITS'. None if not in that form."""
+    m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*(MG|MCG|UNITS?)\s*", text or "", re.IGNORECASE)
+    return (Decimal(m.group(1)), UNIT_NAMES[m.group(2).upper()]) if m else None
 
 
-def build_ncr(latest: dict[str, dict], warn) -> list[dict]:
-    """Each configured market with its products' CMS payment limits and
-    billing units from the latest quarter. A code missing from the CMS file
-    does not stop the build: the page marks it and lets the visitor type a
-    limit. Things that would make the math wrong do stop it."""
+def load_packages(con, quarter: str) -> dict[str, set[tuple[str, Decimal, str]]]:
+    """Billing units in one package (one vial or syringe) for each HCPCS code,
+    from the quarter's ASP NDC-HCPCS crosswalk:
+    {code: {(drug name, billing units, CMS package size text)}}.
+    CMS gives billing units per NDC, which may be a carton of several
+    packages, so they are divided by the package quantity."""
+    rows = con.execute("""
+        SELECT DISTINCT hcpcs_code, drug_name, bill_units_pkg, pkg_qty, pkg_size
+        FROM crosswalks
+        WHERE effective_quarter = ? AND is_current AND crosswalk_type = 'ASP'
+    """, [quarter]).fetchall()
+    out: dict[str, set] = {}
+    for code, name, units_pkg, qty, size in rows:
+        units, n = to_decimal(units_pkg), to_decimal(qty)
+        if not name or units is None or not n:
+            raise SystemExit(f"STOPPED: {quarter} crosswalk row for {code} has drug name {name!r}, "
+                             f"billing units {units_pkg!r}, package quantity {qty!r}.")
+        out.setdefault(code, set()).add((name.strip(), units / n, (size or "").strip()))
+    return out
+
+
+def number_text(value: Decimal) -> str:
+    return f"{value.normalize():f}"
+
+
+def build_ncr(groups: list[dict], packages: dict[str, set], warn) -> list[dict]:
+    """One calculator market per entry in data/ncr_markets.json. Products are
+    the published biosimilar group for the market's molecule (one product per
+    HCPCS code and crosswalk drug name), with CMS payment limits and package
+    sizes. Things that would make the math wrong stop the build."""
     with NCR_MARKETS.open(encoding="utf-8") as f:
         config = json.load(f)
+    group_of = {g["molecule"]: g for g in groups}
+    covered = set()
     markets = []
     for mk in config["markets"]:
         where = f"{NCR_MARKETS.relative_to(ROOT)}, market {mk['id']}"
         if mk["dose"]["basis"] not in DOSE_BASIS:
             raise SystemExit(f"STOPPED: {where}: dose basis {mk['dose']['basis']!r} "
                              f"is not one of {list(DOSE_BASIS)}.")
-        products, unit_mg = [], {}
-        for pr in mk["products"]:
-            code = pr["hcpcs"]
-            row = latest.get(code) if code else None
-            entry = {"key": slugify(pr["name"]), "name": pr["name"], "hcpcs": code,
-                     "reference": bool(pr["reference"]),
-                     "example_rebate_pct": pr.get("example_rebate_pct", 0),
-                     "cms_limit": None, "cms_dosage": None, "cms_description": None}
-            if not code:
-                entry["status"] = "no_code"
-            elif row is None:
-                entry["status"] = "missing"
-                warn(f"NCR calculator: {code} ({pr['name']}, {mk['id']}) is not in the latest CMS file. "
-                     "The page says so and lets visitors type a limit.")
-            else:
-                mg = dosage_mg(row["hcpcs_dosage"])
-                if mg is None:
-                    raise SystemExit(f"STOPPED: {where}: CMS dosage {row['hcpcs_dosage']!r} for {code} "
-                                     "is not in the form '<number> MG'.")
-                unit_mg.setdefault(mg, []).append(code)
-                entry.update(cms_dosage=row["hcpcs_dosage"],
-                             cms_description=display_text(row["short_description"]))
-                if row["payment_limit"] is None:
-                    entry["status"] = "no_limit"
-                    warn(f"NCR calculator: {code} ({pr['name']}) has no payment limit in the latest "
-                         f"CMS file ({row['payment_limit_text']!r}).")
-                else:
-                    entry["status"] = "cms"
-                    entry["cms_limit"] = plain_decimal(row["payment_limit"])  # exactly as CMS gives it
-            entry["packages"] = []
-            for pk in pr["packages"]:
-                if pk["vial"] not in VIAL_TYPE:
-                    raise SystemExit(f"STOPPED: {where}: vial {pk['vial']!r} is not one of {list(VIAL_TYPE)}.")
-                entry["packages"].append({"key": f"{pk['mg']}-{VIAL_TYPE[pk['vial']]}", "mg": pk["mg"],
-                                          "type": VIAL_TYPE[pk["vial"]], "example_price": pk["example_price"]})
-            products.append(entry)
+        g = group_of.get(mk["molecule"])
+        if g is None:
+            warn(f"NCR calculator: {mk['id']}: no published biosimilar group for {mk['molecule']!r}; "
+                 "market left out.")
+            continue
+        covered.add(mk["molecule"])
+        members = [g["ref"], *g["bios"]]
+
         # The calculator rounds a dose to whole billing units of one size per
-        # market, so every product's code must use the same unit.
-        if len(unit_mg) != 1:
-            found = "; ".join(f"{u} mg: {', '.join(c)}" for u, c in unit_mg.items()) or "no codes in the CMS file"
+        # market, so every code must use the same unit.
+        units_seen: dict[tuple, list[str]] = {}
+        for e in members:
+            bu = billing_unit(e["dosage"])
+            if bu is None:
+                raise SystemExit(f"STOPPED: {where}: CMS dosage {e['dosage']!r} for {e['code']} is not "
+                                 "in the form '<number> MG', 'MCG' or 'UNITS'.")
+            units_seen.setdefault(bu, []).append(e["code"])
+        if len(units_seen) != 1:
+            found = "; ".join(f"{s} {m}: {', '.join(c)}" for (s, m), c in units_seen.items())
             raise SystemExit(f"STOPPED: {where}: products need one billing unit per market ({found}).")
-        (unit,) = unit_mg
-        for entry in products:
-            for pk in entry["packages"]:
-                units = Decimal(str(pk["mg"])) / unit
-                if units != units.to_integral_value():
-                    warn(f"NCR calculator: {entry['name']} {pk['mg']} mg is not a whole number of "
-                         f"{unit} mg billing units ({units.normalize():f} units).")
-                pk["units"] = float(units)
-        markets.append({"id": mk["id"], "name": mk["name"], "unit_mg": float(unit),
-                        "unit_label": f"{unit.normalize():f} mg",
+        ((size, measure),) = units_seen
+
+        only = {Decimal(str(u)) for u in mk.get("only_units", [])}
+
+        def multi_dose(units: Decimal, pkg_size: str) -> bool:
+            return any(Decimal(str(sel["units"])) == units and sel.get("pkg_size", pkg_size) == pkg_size
+                       for sel in mk.get("multi_dose", []))
+
+        examples = mk.get("example_prices", {})
+        used_examples = set()
+        products = []
+        for e in members:
+            items = packages.get(e["code"], set())
+            if not items:
+                warn(f"NCR calculator: {e['code']} ({e['name']}) has no packages in the CMS crosswalk; "
+                     "left out.")
+                continue
+            for name in sorted({n for n, _, _ in items}):
+                pkgs = {}
+                for n, units, pkg_size in items:
+                    if n != name or (only and units not in only):
+                        continue
+                    if units != units.to_integral_value():
+                        warn(f"NCR calculator: {name} ({e['code']}) has a package of {number_text(units)} "
+                             "billing units, not a whole number.")
+                    vial = "MDV" if multi_dose(units, pkg_size) else "SDV"
+                    amount = number_text(units * size)
+                    price = examples.get(name, {}).get(amount)
+                    if price is not None:
+                        used_examples.add((name, amount))
+                    pkgs[(units, vial)] = {"key": f"{number_text(units)}-{vial}", "amount": float(units * size),
+                                           "amount_text": amount, "units": float(units), "type": vial,
+                                           "example_price": price}
+                if not pkgs:
+                    continue
+                generic = mk["molecule"].lower()
+                unbranded = name.lower() == generic or name.lower().startswith(generic + "-")
+                products.append({
+                    "key": slugify(f"{name} {e['code']}"),
+                    "name": f"{name} (unbranded)" if unbranded else name,
+                    "example_name": name,
+                    "hcpcs": e["code"],
+                    "reference": e["role"] == "reference",
+                    "status": "cms" if e["limit"] is not None else "no_limit",
+                    "cms_limit": plain_decimal(e["limit"]) if e["limit"] is not None else None,
+                    "cms_dosage": e["dosage"],
+                    "example_rebate_pct": mk.get("example_rebates", {}).get(name, 0),
+                    "packages": [pkgs[k] for k in sorted(pkgs)],
+                })
+                if e["limit"] is None:
+                    warn(f"NCR calculator: {e['code']} ({name}) has no payment limit in the latest CMS file.")
+        unused = [f"{n} {a}" for n, ps in examples.items() for a in ps if (n, a) not in used_examples]
+        if unused:
+            warn(f"NCR calculator: {mk['id']}: example prices match no package: {', '.join(unused)}.")
+        products.sort(key=lambda p: (not p["reference"], p["name"].lower()))
+        for p in products:
+            del p["example_name"]
+        markets.append({"id": mk["id"], "name": mk["name"], "unit_size": float(size), "unit_name": measure,
+                        "unit_label": f"{size.normalize():,f} {measure}",
+                        "dose_source": mk["dose_source"],
                         "dose": {"basis": DOSE_BASIS[mk["dose"]["basis"]], "value": mk["dose"]["value"],
                                  "weight": mk["dose"]["weight_kg"], "bsa": mk["dose"]["bsa_m2"]},
                         "products": products})
+    for g in groups:
+        if g["molecule"] not in covered:
+            warn(f"NCR calculator: biosimilar group {g['molecule']!r} has no market in "
+                 f"{NCR_MARKETS.relative_to(ROOT)}.")
     return markets
 
 
@@ -567,6 +630,7 @@ def main() -> int:
         raise SystemExit("STOPPED: need at least two quarters of data to compare.")
     latest_q, prior_q = quarters[-1], quarters[-2]
     products = load_products(con, latest_q)
+    ncr_packages = load_packages(con, latest_q)
     group_rows = load_groups(con)
     con.close()
     warnings: list[str] = []
@@ -645,7 +709,7 @@ def main() -> int:
 
     # ---- Biosimilar groups (owner's sheet; prices from CMS) ----------------
     groups = build_groups(group_rows, latest, recent_limits, warnings.append)
-    ncr_markets = build_ncr(latest, warnings.append)
+    ncr_markets = build_ncr(groups, ncr_packages, warnings.append)
     group_of = {}
     for grp in groups:
         for e in [grp["ref"], *grp["bios"]]:
