@@ -130,6 +130,12 @@ site is still rebuilt from them; the run is then marked failed (red X) so
 GitHub emails the owner. Pull before working locally after a run has added
 files (`git pull`).
 
+`.github/workflows/deploy.yml` runs on every push to `main`. It downloads
+nothing: it rebuilds `data/asp.duckdb` from `raw/` with `scripts/parse.py`,
+runs `scripts/build_site.py`, and publishes `public/` to GitHub Pages. (The
+weekly workflow's own commits don't trigger it; that workflow publishes the
+site itself.)
+
 `.gitattributes` keeps `raw/` and `reference/biosimilar_groups/` byte-for-byte
 (no line-ending conversion), so their SHA-256 hashes match the manifests on
 both Windows and the Linux runner.

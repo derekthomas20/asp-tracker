@@ -1,0 +1,84 @@
+# Rebuild the website and publish it on GitHub Pages whenever you push to
+# main. Nothing is downloaded here: the site is built only from the files
+# already in the repository (raw/ and reference/). Downloading new CMS files
+# is the job of update-site.yml, which runs every Monday.
+
+name: Deploy site
+
+# When to run: every push to the main branch.
+# (Commits that update-site.yml pushes to main do not start this workflow,
+# because GitHub never lets one workflow's own pushes start another workflow.
+# That workflow publishes the site itself.)
+on:
+  push:
+    branches: [main]
+
+# What this workflow is allowed to do. It only reads the repository; it never
+# commits. The other two permissions are what the official Pages actions need.
+permissions:
+  contents: read    # check out the code
+  pages: write      # publish to GitHub Pages
+  id-token: write   # lets actions/deploy-pages prove it is this repository
+
+# If you push twice in quick succession, let the first deploy finish and then
+# run the newer one, instead of two deploys racing each other.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest   # a fresh Linux machine for every run
+
+    # The "github-pages" environment is where GitHub Pages deploys go. The
+    # page_url output puts a link to the live site on the run's summary page.
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      # 1. Copy the repository onto the machine, including raw/ (the CMS ZIP
+      #    files) and reference/ (the biosimilar_groups sheet snapshots).
+      - name: Check out the code
+        uses: actions/checkout@v5
+
+      # 2. Install Python, the same version the weekly workflow uses.
+      #    "cache: pip" keeps downloaded packages between runs so installs
+      #    are faster.
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      # 3. Install the pinned packages listed in requirements.txt
+      #    (duckdb and Jinja2).
+      - name: Install requirements
+        run: pip install -r requirements.txt
+
+      # 4. Build data/asp.duckdb from the ZIP files in raw/. The database is
+      #    not committed, so every run rebuilds it from scratch.
+      - name: Build the database
+        run: python scripts/parse.py
+
+      # 5. Generate the website into public/ from the database and the
+      #    templates in site/.
+      - name: Build the website
+        run: python scripts/build_site.py
+
+      # 6. Tell GitHub this run is publishing a Pages site. It fails here,
+      #    with a clear message, if Pages is not turned on for the
+      #    repository (Settings > Pages > Source: GitHub Actions).
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v5
+
+      # 7. Package the public/ folder in the format GitHub Pages expects.
+      - name: Upload the website
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+
+      # 8. Publish that package as the live site.
+      - name: Publish to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
