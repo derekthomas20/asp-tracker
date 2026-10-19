@@ -421,6 +421,9 @@ tr.superseded td { color: var(--color-text-2); }
 .ncr-neg { color: var(--color-up); font-weight: 600; }
 .ncr-enter { color: var(--color-text-2); font-style: italic; }
 .ncr-best td { background: var(--color-teal-tint); }
+.ncr-off:not(.ncr-prod) td, .ncr-off .ncr-prod-bar > :not(.ncr-inc) { opacity: .45; }
+.ncr-prod-bar label.ncr-inc { color: var(--color-text); cursor: pointer; }
+.ncr-inc input { accent-color: var(--color-teal); }
 
 .ncr details { border-top: 1px solid var(--color-border); padding-top: var(--space-2); }
 .ncr-method { display: grid; gap: var(--space-2); max-width: 78ch; margin-top: var(--space-2); }

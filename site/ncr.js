@@ -40,6 +40,7 @@ DATA.markets.forEach(d => {
         exampleRebate: p.example_rebate_pct,
         limit: override !== null ? override : (p.cms_limit || ""),
         rebate: typeof e.rebate === "string" ? e.rebate : "",
+        include: e.off !== true,
         pkgs: p.packages.map(k => ({key: k.key, mg: k.amount, type: k.type, examplePrice: k.example_price,
           price: typeof prices[k.key] === "string" ? prices[k.key] : "",
           price340: typeof prices340[k.key] === "string" ? prices340[k.key] : ""}))
@@ -61,6 +62,7 @@ function save() {
       const e = {}, prices = {}, prices340 = {};
       if (overridden(p)) e.limit = p.limit;
       if (p.rebate !== "") e.rebate = p.rebate;
+      if (!p.include) e.off = true;
       p.pkgs.forEach(k => { if (k.price !== "") prices[k.key] = k.price; if (k.price340 !== "") prices340[k.key] = k.price340; });
       if (Object.keys(prices).length) e.prices = prices;
       if (Object.keys(prices340).length) e.prices340 = prices340;
@@ -89,7 +91,7 @@ function costed(p, channel) {
   return Object.assign({}, p, {rebate: 0, pkgs: p.pkgs.map(k => Object.assign({}, k,
     {price: (1 - sh) * n(k.price) * rf + sh * n(k.price340)}))});
 }
-const ready = p => hasLimit(p) && p.pkgs.length > 0 && p.pkgs.every(priced);
+const ready = p => p.include && hasLimit(p) && p.pkgs.length > 0 && p.pkgs.every(priced);
 const money = (v, d = 2) => (v < 0 ? "−$" : "$") + Math.abs(v).toLocaleString("en-US", {minimumFractionDigits: d, maximumFractionDigits: d});
 const signed = (v, d = 0) => (v > 0 ? "+" : "") + money(v, d);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[c]));
@@ -157,7 +159,8 @@ function doseVis() {
 function renderPricing() {
   const m = M();
   $("priceBody").innerHTML = m.products.map(p => {
-    const head = `<tr class="ncr-prod"><td colspan="9"><div class="ncr-prod-bar">
+    const head = `<tr class="ncr-prod" id="prod-${p.key}"><td colspan="9"><div class="ncr-prod-bar">
+      <label class="ncr-inc"><input type="checkbox" data-p="${p.key}" data-f="include"${p.include ? " checked" : ""} aria-label="Include ${esc(p.name)} in the comparison">Include</label>
       <span class="ncr-name">${esc(p.name)}</span>
       <span class="tag${p.ref ? " ncr-ref" : ""}">${p.ref ? "Reference" : "Biosimilar"}</span>
       <span class="ncr-code">${p.hcpcs ? esc(p.hcpcs) : "No HCPCS code"}</span>
@@ -227,6 +230,8 @@ function update() {
   let bestUnit = null;
   m.products.forEach(p => {
     renderStatus(p);
+    const head = $("prod-" + p.key); if (head) head.classList.toggle("ncr-off", !p.include);
+    p.pkgs.forEach(k => { const r = $("row-" + p.key + "-" + k.key); if (r) r.classList.toggle("ncr-off", !p.include); });
     const pay = payPerUnit(p), cp = costed(p);
     p.pkgs.forEach((k, i) => {
       const row = $("row-" + p.key + "-" + k.key); if (!row) return;
@@ -238,7 +243,7 @@ function update() {
       o("net").textContent = u ? money(net) : "—";
       o("ncr").innerHTML = !hasLimit(p) ? enterLimit : u ? `<span class="${ncr < 0 ? "ncr-neg" : "ncr-pos"}">${money(ncr)}</span>` : "—";
       o("mg%").innerHTML = !hasLimit(p) ? enterLimit : u && net > 0 ? ((ncr / net) * 100).toFixed(1) + "%" : "—";
-      if (hasLimit(p) && u && (!bestUnit || ncr > bestUnit.ncr)) bestUnit = {p, k, ncr};
+      if (p.include && hasLimit(p) && u && (!bestUnit || ncr > bestUnit.ncr)) bestUnit = {p, k, ncr};
     });
   });
   document.querySelectorAll("#priceBody tr").forEach(r => r.classList.remove("ncr-best"));
@@ -248,7 +253,8 @@ function update() {
   const results = channel => m.products.filter(ready).map(p => ({p, c: bestCombo(costed(p, channel), m, D)}))
     .filter(r => r.c).sort((a, b) => b.c.ncr - a.c.ncr);
   const res = results("mix");
-  const waiting = m.products.filter(p => !ready(p));
+  const waiting = m.products.filter(p => p.include && !ready(p));
+  const off = m.products.filter(p => !p.include);
   const lead = res[0], second = res[1], annual = n(s.annual);
   $("doseBody").innerHTML = res.map((r, i) => {
     const c = r.c, gap = (c.ncr - lead.c.ncr) * annual;
@@ -285,6 +291,7 @@ function update() {
   }
   $("summary").textContent = summary;
   $("summary").hidden = !summary;
+  const offNote = off.length ? `<p class="ncr-calc">Left out by you: ${off.map(p => esc(p.name)).join(", ")}.</p>` : "";
   if (lead) {
     const neg = res.filter(r => r.c.ncr < 0).length;
     $("leadCard").innerHTML = `<div class="ncr-eyebrow">Best recovery per dose</div>
@@ -295,7 +302,7 @@ function update() {
         <div><div class="k">Annual difference</div><div class="v">${second ? signed((lead.c.ncr - second.c.ncr) * annual) : "—"}</div></div>
         <div><div class="k">Vials used</div><div class="v">${esc(lead.c.desc)}</div></div>
         <div><div class="k">Underwater products</div><div class="v">${neg ? `<span class="ncr-chip neg">${neg} below cost</span>` : "None"}</div></div>
-      </div>` + (waiting.length ? `<p class="ncr-calc">${waiting.length} product${waiting.length > 1 ? "s" : ""} not compared yet: enter ${waiting.some(p => !hasLimit(p)) ? "a limit or " : ""}${on340 ? "prices" : "contract prices"}.</p>` : "");
+      </div>` + (waiting.length ? `<p class="ncr-calc">${waiting.length} product${waiting.length > 1 ? "s" : ""} not compared yet: enter ${waiting.some(p => !hasLimit(p)) ? "a limit or " : ""}${on340 ? "prices" : "contract prices"}.</p>` : "") + offNote;
     const vals = res.map(r => r.c.ncr), lo = Math.min(0, ...vals), hi = Math.max(0, ...vals), span = (hi - lo) || 1, z = (0 - lo) / span * 100;
     $("bars").innerHTML = `<div class="ncr-eyebrow">NCR per dose by product</div>` + res.map((r, i) => {
       const v = r.c.ncr, a = (Math.min(v, 0) - lo) / span * 100, w = Math.abs(v) / span * 100;
@@ -304,7 +311,9 @@ function update() {
         <div class="val ${v < 0 ? "ncr-neg" : ""}">${money(v)}</div></div>`;
     }).join("");
   } else {
-    $("leadCard").innerHTML = `<div class="ncr-eyebrow">Best recovery per dose</div>
+    $("leadCard").innerHTML = off.length === m.products.length
+      ? `<div class="ncr-eyebrow">Best recovery per dose</div><p>Every product is left out. Tick <b>Include</b> beside a product under <b>Your prices by package</b> to compare it.</p>`
+      : `<div class="ncr-eyebrow">Best recovery per dose</div>
       <p>Enter ${on340 ? "prices" : "contract prices"} for at least one product${on340 ? "" : ", or click <b>Load example prices</b>,"} to compare products.</p>`;
     $("bars").innerHTML = "";
   }
@@ -326,7 +335,7 @@ function update() {
   $("beSub").textContent = `The ${solve340 ? "340B price" : on340 ? "price for other patients" : "contract price"} each package would need for its NCR per unit to match the leader’s best package. Use it as a negotiation target.`;
   if (bestUnit) {
     const target = bestUnit.ncr;
-    $("beBody").innerHTML = m.products.flatMap(p => {
+    $("beBody").innerHTML = m.products.filter(p => p.include).flatMap(p => {
       const pay = payPerUnit(p), rf = 1 - n(p.rebate) / 100;
       return p.pkgs.filter(k => units(m, k) > 0).map(k => {
         const u = units(m, k), isLead = k === bestUnit.k;
@@ -354,7 +363,7 @@ const findP = key => M().products.find(p => p.key === key);
 $("priceBody").addEventListener("input", e => {
   const t = e.target, p = findP(t.dataset.p); if (!p || !t.dataset.f) return;
   if (t.dataset.k) { const k = p.pkgs.find(x => x.key === t.dataset.k); if (k) k[t.dataset.f] = t.value; }
-  else p[t.dataset.f] = t.value;
+  else p[t.dataset.f] = t.type === "checkbox" ? t.checked : t.value;
   update();
 });
 $("priceBody").addEventListener("click", e => {
