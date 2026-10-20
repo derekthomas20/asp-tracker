@@ -25,7 +25,8 @@ Pages written to public/:
     search-index.js     the list behind the header search suggestions
     charts.js           draws the Chart.js line charts in the site's style
 
-Templates are in site/templates; site/style.css, site/charts.js, site/ncr.js
+Templates are in site/templates; site/style.css, site/charts.js, site/ncr.js,
+site/usmap.js
 and site/static/ (logo, favicons) are copied as they are. The layout follows the
 "Broadsheet" design in design/; colors and fonts are the Rxcurve brand.
 public/ is deleted and rebuilt from scratch on every run.
@@ -62,6 +63,7 @@ TEMPLATES = ROOT / "site" / "templates"
 STYLESHEET = ROOT / "site" / "style.css"
 CHART_SCRIPT = ROOT / "site" / "charts.js"
 NCR_SCRIPT = ROOT / "site" / "ncr.js"
+MAP_SCRIPT = ROOT / "site" / "usmap.js"  # state map on the biosimilar group pages
 NCR_MARKETS = ROOT / "data" / "ncr_markets.json"  # hand-maintained doses; holds no prices
 NCR_PAGE = "tools/ncr-calculator/index.html"
 STATIC = ROOT / "site" / "static"  # logo and favicons
@@ -179,6 +181,11 @@ def big_money(value: Decimal | None) -> str:
         if abs(value) >= size:
             return f"${value / size:,.{1 if abs(value) >= size * 10 else 2}f} {word}"
     return f"${value:,.0f}"
+
+
+def short_money(value: Decimal | None) -> str:
+    """Headline figures in a narrow column: '$439.3M', '$2.70B'."""
+    return big_money(value).replace(" billion", "B").replace(" million", "M")
 
 
 def share_text(value: Decimal | None) -> str:
@@ -562,7 +569,26 @@ def build_market(grp: dict, usage, years_info, ytd, geo, units_in_year) -> dict 
         return [{"label": e["name"], "colorVar": e["color_var"],
                  "values": [value(y, e["code"]) for y in per_year]} for e in members]
     spend_series = series(lambda y, c: plain_decimal(y["by_code"][c]["spending"]) if y["by_code"][c] else None)
-    share_series = series(lambda y, c: (f"{y['claim_share'][c]:.2f}" if y["claim_share"][c] is not None else None))
+    # Market share lines: each product's share of the group's claims, the
+    # reference as the thick navy line, and all biosimilars together dashed.
+    share_series = [{"label": e["name"], "colorVar": e["color_var"],
+                     "width": 3.5 if e["role"] == "reference" else 1.75,
+                     "values": [f"{y['claim_share'][e['code']]:.2f}" if y["claim_share"][e["code"]] is not None
+                                else None for y in per_year]} for e in members]
+    if len(bio_codes) > 1:
+        share_series.append({"label": "All biosimilars", "colorVar": "--color-highlight", "width": 2.5,
+                             "dash": True, "values": [f"{y['bio_share']:.2f}" if y["bio_share"] is not None
+                                                      else None for y in per_year]})
+
+    # Volume: claims for the latest year; billing units for the latest final
+    # year, only when every code with units that year is billed in the same unit.
+    final_units = final_unit = None
+    if final:
+        with_units = [c for c in codes if final["by_code"].get(c) and final["by_code"][c]["units"] is not None]
+        unit_sets = [units_in_year.get((c, final["year"]), set()) for c in with_units]
+        if with_units and all(len(u) == 1 and u == unit_sets[0] for u in unit_sets):
+            final_units = sum(final["by_code"][c]["units"] for c in with_units)
+            final_unit = next(iter(unit_sets[0]))
 
     # States: physician-billed services, only for codes billed in the same
     # unit as the reference product in that year (services count billing units).
@@ -577,7 +603,7 @@ def build_market(grp: dict, usage, years_info, ytd, geo, units_in_year) -> dict 
                 total = sum(geo_services.get(c, {}).get(key, 0) for c in comparable)
                 bios = sum(geo_services.get(c, {}).get(key, 0) for c in comparable if c in bio_codes)
                 if total:
-                    states.append({"name": state_names.get(key, key), "services": total,
+                    states.append({"code": key, "name": state_names.get(key, key), "services": total,
                                    "bio_share": share(bios, total)})
             states.sort(key=lambda s: (-s["services"], s["name"]))
             # Share of the year's Medicare units that the physician-billed
@@ -595,7 +621,12 @@ def build_market(grp: dict, usage, years_info, ytd, geo, units_in_year) -> dict 
         # A preliminary year gets a second label line ("2025" / "prelim.").
         "chart_labels": [[str(y["year"]), "prelim."] if y["preliminary"] else str(y["year"]) for y in per_year],
         "spend_series": spend_series, "share_series": share_series,
+        "final_units": final_units, "final_unit": final_unit,
         "geo_year": geo_year, "states": states, "geo_excluded": excluded, "geo_coverage": coverage,
+        # For the map: FIPS state code -> [services, biosimilar share], as text.
+        "map_data": {s["code"]: [plain_decimal(s["services"]),
+                                 f"{s['bio_share']:.2f}" if s["bio_share"] is not None else None,
+                                 s["name"]] for s in states},
         "source_files": sorted(set().union(*(years_info[y["year"]]["source_files"] for y in per_year),
                                            ytd["source_files"] if ytd else set(),
                                            geo_files if states else set())),
@@ -825,7 +856,7 @@ def make_env() -> Environment:
                        arrow_percent=arrow_percent, plain_percent=plain_percent,
                        num=number, quarter=quarter_label, months=quarter_months,
                        effective=effective_range, long_date=long_date, desc=display_text,
-                       big_money=big_money, share=share_text, count=count)
+                       big_money=big_money, short_money=short_money, share=share_text, count=count)
     return env
 
 
@@ -1076,6 +1107,7 @@ def main() -> int:
     shutil.copy2(STYLESHEET, OUT / "style.css")
     shutil.copy2(CHART_SCRIPT, OUT / "charts.js")
     shutil.copy2(NCR_SCRIPT, OUT / "ncr.js")
+    shutil.copy2(MAP_SCRIPT, OUT / "usmap.js")
     shutil.copytree(STATIC, OUT / "static")
 
     # The header search box suggests codes as you type. Its list is written as
@@ -1095,7 +1127,7 @@ def main() -> int:
         # Added to the style.css and script links so browsers fetch them
         # again whenever they change instead of using an old saved copy.
         "asset_version": hashlib.sha256(STYLESHEET.read_bytes() + CHART_SCRIPT.read_bytes()
-                                        + NCR_SCRIPT.read_bytes()).hexdigest()[:10],
+                                        + NCR_SCRIPT.read_bytes() + MAP_SCRIPT.read_bytes()).hexdigest()[:10],
         "latest_q": latest_q,
         "source_page": manifest["source_page"],
         "top_n": TOP_N,

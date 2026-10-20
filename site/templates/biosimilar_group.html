@@ -72,16 +72,22 @@
   <h2 id="market-h">{{ g.molecule }} market in Medicare</h2>
   <div class="figures">
     <div class="figure">
-      <span class="big">{{ m.latest.spending|big_money }}</span>
+      <span class="big">{{ m.latest.spending|short_money }}</span>
       <span class="label">Medicare Part B spending, {{ m.latest.year }}{% if m.latest.preliminary %} (preliminary){% endif %}</span>
     </div>
+    {% if m.latest.claims is not none %}
+    <div class="figure">
+      <span class="big">{{ m.latest.claims|count }}</span>
+      <span class="label">claims in {{ m.latest.year }}{% if m.latest.preliminary %} (preliminary){% endif %}{% if m.final_units is not none %}; {{ m.final_units|count }} billing units ({{ m.final_unit|lower }} each) in {{ m.final.year }}{% endif %}</span>
+    </div>
+    {% endif %}
     <div class="figure">
       <span class="big">{{ m.latest.bio_share|share }}</span>
       <span class="label">of {{ m.latest.year }} claims were for biosimilars{% if m.prior and m.prior.bio_share is not none %}, vs. {{ m.prior.bio_share|share }} in {{ m.prior.year }}{% endif %}</span>
     </div>
     {% if m.ytd_spending is not none %}
     <div class="figure">
-      <span class="big">{{ m.ytd_spending|big_money }}</span>
+      <span class="big">{{ m.ytd_spending|short_money }}</span>
       <span class="label">spending so far in {{ m.ytd.year }} ({{ m.ytd.quarters }}, preliminary)</span>
     </div>
     {% endif %}
@@ -93,15 +99,16 @@
       <div class="chart"><canvas id="spend-chart" role="img" aria-label="Stacked bars of Medicare spending for each {{ g.molecule|lower }} product by year. The same figures are in the table below."></canvas></div>
     </div>
     <div>
-      <h3>Share of claims</h3>
-      <div class="chart"><canvas id="share-chart" role="img" aria-label="Stacked bars of each product's share of Medicare claims by year. The latest year's shares are in the table below."></canvas></div>
+      <h3>Market share (share of claims)</h3>
+      <div class="chart"><canvas id="share-chart" role="img" aria-label="Lines showing each product's percent of the group's Medicare claims by year. The latest year's shares are in the table below."></canvas></div>
     </div>
   </div>
   <ul class="legend">
     {% for e in [g.ref] + g.bios %}<li><span class="swatch" style="background:var({{ e.color_var }});height:10px;width:10px"></span>{{ e.name }}{% if e.role == "reference" %} (reference){% endif %}</li>{% endfor %}
+    {% if g.bios|length > 1 %}<li><span class="swatch dashed"></span>All biosimilars (share chart)</li>{% endif %}
   </ul>
   <span class="chart-caption">Medicare Part B fee-for-service spending and claims by calendar year.{% if m.years|selectattr("preliminary")|list %} Years marked “prelim.” come from CMS’s quarterly spending file and will be replaced when CMS publishes the yearly file.{% endif %}
-  Claims are used for share because the quarterly file has no dosage units. A product with no bar for a year is not in CMS’s file for that year.</span>
+  Market share is each product’s percent of the group’s claims that year; claims are used because the quarterly file has no dosage units. A product with no bar for a year is not in CMS’s file for that year.</span>
 
   <h3>By product</h3>
   <div class="table-wrap">
@@ -140,6 +147,15 @@
   {% if m.geo_coverage is not none %}For these products it covers {{ m.geo_coverage|share }} of {{ m.geo_year }} Medicare units.{% endif %}
   CMS leaves out a state’s row for a product when fewer than 11 patients received it, so small states may undercount.
   {% if m.geo_excluded %}Left out because their billing unit differs from {{ g.ref.name }}’s: {{ m.geo_excluded|join(", ") }}.{% endif %}</p>
+  <div class="state-map" id="state-map">
+    <div class="map-toggle" role="group" aria-label="Color states by">
+      <button type="button" data-measure="services" aria-pressed="true">Total use</button>
+      <button type="button" data-measure="share" aria-pressed="false">Biosimilar share</button>
+    </div>
+    <svg class="us-map" viewBox="0 0 975 610" role="img" aria-label="Map of the United States colored by physician-billed {{ g.molecule|lower }} use in {{ m.geo_year }}. The same figures are in the state table below."></svg>
+    <div class="map-legend"><span class="lo"></span><span class="bar"></span><span class="hi"></span></div>
+    <p class="map-info">Hover over a state to see its figure. Territories and states with no data are in the table.</p>
+  </div>
   <details>
     <summary>Show {{ m.states|length }} states and territories</summary>
     <div class="table-wrap">
@@ -162,6 +178,12 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="{{ root }}charts.js?v={{ asset_version }}"></script>
+{% if g.market and g.market.states %}
+<script src="https://cdn.jsdelivr.net/npm/d3-array@3.2.4/dist/d3-array.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo@3.1.1/dist/d3-geo.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="{{ root }}usmap.js?v={{ asset_version }}"></script>
+{% endif %}
 <script>
 drawGroupChart(document.getElementById("group-chart"), {{ chart_labels|tojson }}, [
   {% for b in g.bios %}{ label: {{ b.name|tojson }}, values: {{ b.chart_values|tojson }}, colorVar: {{ b.color_var|tojson }}, width: 1.75 },
@@ -169,7 +191,10 @@ drawGroupChart(document.getElementById("group-chart"), {{ chart_labels|tojson }}
 ]);
 {% if g.market %}
 drawStackedBars(document.getElementById("spend-chart"), {{ g.market.chart_labels|tojson }}, {{ g.market.spend_series|tojson }}, { format: "dollars" });
-drawStackedBars(document.getElementById("share-chart"), {{ g.market.chart_labels|tojson }}, {{ g.market.share_series|tojson }}, { format: "percent" });
+drawGroupChart(document.getElementById("share-chart"), {{ g.market.chart_labels|tojson }}, {{ g.market.share_series|tojson }}, { format: "percent" });
+{% if g.market.states %}
+drawStateMap(document.getElementById("state-map"), {{ g.market.map_data|tojson }}, { unitLabel: "billing units" });
+{% endif %}
 {% endif %}
 </script>
 {% endblock %}

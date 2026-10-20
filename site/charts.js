@@ -67,7 +67,7 @@
                 // Label every Nth quarter counting back from the latest, so
                 // the latest quarter's label is always shown.
                 callback: function (v, i) {
-                  var step = Math.ceil(labels.length / (canvas.clientWidth < 500 ? 5 : 9));
+                  var step = labels.length <= 8 ? 1 : Math.ceil(labels.length / (canvas.clientWidth < 500 ? 5 : 9));
                   return (last - i) % step === 0 ? labels[i] : "";
                 }
               }
@@ -87,9 +87,13 @@
   };
 
   // Several lines on one chart: the reference product as a thick navy line,
-  // biosimilars in teal, light teal, then colors that differ in lightness. series: [{label, values, colorVar, width}]
-  window.drawGroupChart = function (canvas, labels, series) {
+  // biosimilars in teal, light teal, then colors that differ in lightness. series: [{label, values, colorVar, width, dash}]
+  // opts.format "percent" draws shares (0-100%) with a dot on every year.
+  window.drawGroupChart = function (canvas, labels, series, opts) {
     if (!window.Chart || !canvas) return;
+    opts = opts || {};
+    var pct = opts.format === "percent";
+    var fmt = pct ? function (v) { return v.toFixed(1) + "%"; } : function (v) { return dollars.format(v); };
     var muted = css("--color-neutral-700"), text = css("--color-text"), divider = css("--color-divider");
     var font = { family: css("--font-body") || "sans-serif", size: 12 };
     var last = labels.length - 1;
@@ -101,7 +105,8 @@
       return {
         label: s.label, data: values, borderColor: color, backgroundColor: color,
         borderWidth: s.width, spanGaps: false, tension: 0, borderJoinStyle: "round",
-        pointRadius: values.map(function (_, i) { return i === last ? s.width + 1 : 0; }),
+        borderDash: s.dash ? [6, 4] : [],
+        pointRadius: values.map(function (_, i) { return pct ? 2.5 : i === last ? s.width + 1 : 0; }),
         pointHoverRadius: 4, order: s.width > 2 ? 0 : 1
       };
     });
@@ -121,7 +126,8 @@
               backgroundColor: css("--color-surface"), titleColor: text, bodyColor: text,
               borderColor: divider, borderWidth: 1, cornerRadius: 2, boxPadding: 4,
               titleFont: font, bodyFont: font,
-              callbacks: { label: function (c) { return " " + c.dataset.label + ": " + dollars.format(c.parsed.y); } }
+              filter: function (c) { return c.parsed.y !== null; },
+              callbacks: { label: function (c) { return " " + c.dataset.label + ": " + fmt(c.parsed.y); } }
             }
           },
           scales: {
@@ -132,15 +138,16 @@
                 color: function (c) { return c.index === last ? text : muted; },
                 maxRotation: 0, autoSkip: false,
                 callback: function (v, i) {
-                  var step = Math.ceil(labels.length / (canvas.clientWidth < 500 ? 5 : 9));
+                  var step = labels.length <= 8 ? 1 : Math.ceil(labels.length / (canvas.clientWidth < 500 ? 5 : 9));
                   return (last - i) % step === 0 ? labels[i] : "";
                 }
               }
             },
             y: {
-              min: Math.max(0, lo - pad), max: hi + pad, border: { display: false },
+              min: pct ? 0 : Math.max(0, lo - pad), max: pct ? 100 : hi + pad, border: { display: false },
               grid: { color: divider, drawTicks: false },
-              ticks: { count: 4, padding: 10, font: font, color: muted, callback: axisDollars }
+              ticks: { count: pct ? 5 : 4, padding: 10, font: font, color: muted,
+                       callback: pct ? function (v) { return v + "%"; } : axisDollars }
             }
           }
         }
