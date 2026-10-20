@@ -145,7 +145,7 @@ function renderControls() {
   $("medShare").value = s.medShare; $("commPct").value = s.commPct; $("seq").checked = s.seq; $("erosion").value = s.erosion;
   $("wasteBill").checked = s.wasteBill; $("mdvReuse").checked = s.mdvReuse; $("annual").value = s.annual;
   $("is340").checked = s.is340; $("share340").value = s.share340;
-  $("unitLine").innerHTML = `HCPCS billing unit: <b>${esc(m.unitLabel)}</b> (CMS ${esc(DATA.quarter)})`;
+  $("unitLine").innerHTML = `Billing unit: <b>${esc(m.unitLabel)}</b> (CMS ${esc(DATA.quarter)})`;
   doseVis();
 }
 function doseVis() {
@@ -216,8 +216,12 @@ function perYear(p, c, m, annual) {
 function update() {
   const m = M(), s = state.settings;
   $("erosionOut").textContent = (s.erosion > 0 ? "+" : "") + s.erosion + "%";
+  $("moreSum").textContent = "· Commercial " + n(s.commPct) + "% of limit"
+    + (s.seq ? " · sequestration on" : "") + (n(s.erosion) ? " · limit change " + (s.erosion > 0 ? "+" : "") + s.erosion + "%" : "")
+    + (s.wasteBill ? " · JW on" : "") + (s.mdvReuse ? " · multi-dose reuse" : "")
+    + (s.is340 ? " · 340B " + Math.round(share340() * 100) + "%" : "");
   const mg = doseMg(m), D = doseUnits(m);
-  $("doseLine").innerHTML = `<b>${esc(amt(m, mg))}</b> = <b>${D}</b> billing units`;
+  $("doseLine").innerHTML = `Dose: <b>${esc(amt(m, mg))}</b> = <b>${D}</b> billing units`;
   $("exampleNote").hidden = !m.example;
   $("exampleNote").textContent = `Example prices are loaded for ${m.name}. They are made up for illustration and are not real contracts.`;
   const on340 = s.is340, sh = share340(), mixed = on340 && sh > 0 && sh < 1;

@@ -364,6 +364,18 @@ tr.superseded td { color: var(--color-text-2); }
 .ncr-tog input { margin-top: 4px; accent-color: var(--color-teal); }
 .ncr-tog small { display: block; font-size: 13px; color: var(--color-text-2); }
 .ncr-calc { font-size: 14px; color: var(--color-text-2); margin: 0; }
+.ncr-main { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: end; }
+.ncr-main .ncr-f { flex: 1 1 120px; }
+.ncr-main .ncr-f.ncr-wide { flex: 2 1 220px; }
+.ncr details.ncr-def, .ncr details.ncr-more { border-top: 0; padding-top: 0; }
+.ncr-def summary { font-size: 14px; color: var(--color-teal); font-weight: 600; cursor: pointer; }
+.ncr-def p { margin-top: 6px; max-width: 70ch; }
+.ncr-more { border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 10px 12px; }
+.ncr-more summary { cursor: pointer; font-family: var(--font-heading); font-weight: 600; font-size: 15px; color: var(--color-navy); }
+.ncr-more summary .ncr-calc { font-family: var(--font-body); font-weight: 400; margin-left: 6px; }
+.ncr-more-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--space-3); margin-top: var(--space-2); }
+.ncr-group { display: grid; gap: var(--space-2); align-content: start; }
+.ncr-group h3 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-2); }
 .ncr-calc b { color: var(--color-text); }
 
 .ncr-actions { display: flex; flex-wrap: wrap; gap: 8px var(--space-3); align-items: center; }
