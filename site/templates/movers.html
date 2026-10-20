@@ -19,6 +19,7 @@ Only the {{ s.compared|num }} codes with a payment limit in both quarters and th
     <div class="seg" role="group" aria-label="Rank by">
       <button type="button" data-view="pct" aria-pressed="true">Percent change</button>
       <button type="button" data-view="dollars" aria-pressed="false">Dollar change</button>
+      {% if effect_year %}<button type="button" data-view="effect" aria-pressed="false">Yearly effect</button>{% endif %}
     </div>
   </div>
 
@@ -32,20 +33,25 @@ Only the {{ s.compared|num }} codes with a payment limit in both quarters and th
 {% set views = [
   ("pct", "by percent change"),
   ("dollars", "by dollar change"),
-] %}
+] + ([("effect", "by yearly effect")] if effect_year else []) %}
 {% for key, label in views %}
 <section class="view" data-view="{{ key }}">
   {% if key == "pct" %}
   <p class="note">Codes with a {{ s.prior_q|quarter }} payment limit under {{ pct_min_prior|money }} are left out of this ranking, because a change of a few cents on a small amount
   looks like a very large percent{% if n_below_floor %} ({{ n_below_floor|num }} codes that changed are left out){% endif %}. They are still in the dollar ranking.</p>
   {% endif %}
+  {% if key == "effect" %}
+  <p class="note">Yearly effect is the change per billing unit times the code’s {{ effect_year }} Medicare Part B units (CMS Part B Spending by Drug): roughly how much Medicare’s allowed amount would change in a year if use stayed at the {{ effect_year }} level.
+  It is this site’s calculation, not a CMS figure, and covers the {{ n_effect|num }} changed codes that have {{ effect_year }} units in the same billing unit.</p>
+  {% endif %}
   <h2 id="increases-{{ key }}">Largest increases {{ label }}</h2>
-  {% if movers[key].increases %}{{ movers_table(movers[key].increases, s, root, key, spark_quarters) }}{% else %}<p>No payment limits went up this quarter.</p>{% endif %}
+  {% if movers[key].increases %}{{ movers_table(movers[key].increases, s, root, key, spark_quarters, effect_year) }}{% else %}<p>No payment limits went up this quarter.</p>{% endif %}
 
   <h2 id="decreases-{{ key }}">Largest decreases {{ label }}</h2>
-  {% if movers[key].decreases %}{{ movers_table(movers[key].decreases, s, root, key, spark_quarters) }}{% else %}<p>No payment limits went down this quarter.</p>{% endif %}
+  {% if movers[key].decreases %}{{ movers_table(movers[key].decreases, s, root, key, spark_quarters, effect_year) }}{% else %}<p>No payment limits went down this quarter.</p>{% endif %}
 </section>
 {% endfor %}
+{% if effect_year %}<p class="note">“Yearly effect” is the change per billing unit times the code’s {{ effect_year }} Medicare units; a dash means CMS has no {{ effect_year }} units for the code in the same billing unit.</p>{% endif %}
 <p class="note">The trend lines show each code’s payment limit for the last {{ spark_quarters }} quarters, with a dot on {{ s.latest_q|quarter }}. Gaps are quarters with no limit or a different billing unit.</p>
 {% endblock %}
 {% block scripts %}
@@ -57,7 +63,7 @@ Only the {{ s.compared|num }} codes with a payment limit in both quarters and th
   var views = document.querySelectorAll("section.view");
   var input = document.getElementById("filter");
   var status = document.getElementById("filter-status");
-  var current = location.hash === "#dollars" ? "dollars" : "pct";
+  var current = location.hash === "#dollars" ? "dollars" : location.hash === "#effect" ? "effect" : "pct";
 
   function activeRows() {
     return document.querySelectorAll('section.view[data-view="' + current + '"] table.filterable tbody tr');
@@ -77,7 +83,7 @@ Only the {{ s.compared|num }} codes with a payment limit in both quarters and th
     current = view;
     views.forEach(function (v) { v.hidden = v.getAttribute("data-view") !== view; });
     buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-view") === view)); });
-    history.replaceState(null, "", view === "dollars" ? "#dollars" : location.pathname + location.search);
+    history.replaceState(null, "", view === "pct" ? location.pathname + location.search : "#" + view);
     applyFilter();
   }
 

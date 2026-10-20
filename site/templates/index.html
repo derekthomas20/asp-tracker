@@ -54,6 +54,26 @@
   <div class="figure"><span class="big">{{ s.median_pct|percent }}</span><span class="label">median change across the {{ s.compared|num }} codes compared</span></div>
 </div>
 
+{% if top_drugs and top_drugs.rows %}
+<section class="summary">
+  <div>
+    <span class="kicker cyan">Medicare Part B usage</span>
+    <h2>Largest Part B drugs by Medicare spending, {{ top_drugs.year }}</h2>
+    <p class="lede">The {{ top_drugs.rows|length }} HCPCS codes with the most Medicare Part B fee-for-service spending in {{ top_drugs.year }}{% if top_drugs.preliminary %} (preliminary, from CMS’s quarterly spending file){% endif %}.
+    Each code page has its spending by year, top states, and payment limit history.</p>
+    {% if has_switch %}<a class="more" href="{{ root }}{{ switch_page }}">Model a biosimilar switch →</a>{% endif %}
+  </div>
+  <ol class="co-list rank-list">
+    {% for r in top_drugs.rows %}
+    <li><a href="{{ root }}codes/{{ r.code }}.html">
+      <span><span class="name">{{ r.description or r.code }}</span><span class="sub">{{ r.code }} · {{ r.claims|count }} claims</span></span>
+      <span class="pct">{{ r.spending|short_money }}</span>
+    </a></li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+
 {% if co.rows %}
 <section class="summary">
   <div>
@@ -105,6 +125,8 @@
 <ul class="cards">
   <li><a href="{{ root }}movers.html"><span class="card-kicker">{{ s.prior_q|quarter }} → {{ s.latest_q|quarter }}</span><span class="card-title">Movers</span><span class="card-body">The {{ top_n }} biggest increases and decreases, by percent or dollars</span></a></li>
   <li><a href="{{ root }}changes.html"><span class="card-kicker">{{ s.latest_q|quarter }}</span><span class="card-title">New &amp; dropped</span><span class="card-body">{{ s.n_new|num }} new and {{ s.n_dropped|num }} dropped codes</span></a></li>
+  {% if has_groups %}<li><a href="{{ root }}biosimilars.html"><span class="card-kicker">Markets</span><span class="card-title">Biosimilars</span><span class="card-body">Prices, Medicare spending, market share and state maps for each biosimilar market</span></a></li>{% endif %}
+  {% if has_switch %}<li><a href="{{ root }}{{ switch_page }}"><span class="card-kicker">Tool</span><span class="card-title">Switching calculator</span><span class="card-body">What moving use from a reference product to a biosimilar would change for Medicare and patients</span></a></li>{% endif %}
   <li><a href="{{ root }}search.html"><span class="card-kicker">{{ n_codes_all|num }} codes</span><span class="card-title">All codes</span><span class="card-body">Every code’s payment limit history</span></a></li>
   <li><a href="{{ root }}downloads.html"><span class="card-kicker">CSV</span><span class="card-title">Downloads</span><span class="card-body">The full history as one file</span></a></li>
   <li><a href="{{ root }}about.html"><span class="card-kicker">Method</span><span class="card-title">About</span><span class="card-body">Where the data comes from and what it means</span></a></li>

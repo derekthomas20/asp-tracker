@@ -78,6 +78,7 @@ OUT = ROOT / "public"
 CSV_NAME = "asp-payment-limits-history.csv"
 
 TOP_N = 25  # rows in each movers table
+TOP_DRUGS = 10  # rows in the home page "Largest Part B drugs" list
 # Codes whose prior-quarter limit is below this are left out of the percent
 # ranking: a few cents of change on a tiny base looks like a huge percent.
 # They still appear in the dollar ranking.
@@ -973,7 +974,8 @@ def make_env() -> Environment:
                        arrow_percent=arrow_percent, plain_percent=plain_percent,
                        num=number, quarter=quarter_label, months=quarter_months,
                        effective=effective_range, long_date=long_date, desc=display_text,
-                       big_money=big_money, short_money=short_money, share=share_text, count=count)
+                       big_money=big_money, short_money=short_money, share=share_text, count=count,
+                       short_signed_money=lambda v: sign(v) + short_money(abs(v)))
     return env
 
 
@@ -1099,6 +1101,36 @@ def main() -> int:
         for e in [grp["ref"], *grp["bios"]]:
             group_of[e["code"]] = grp
     groups_source = sorted({r["source_file"] for r in group_rows})
+
+    switch_year, switch_markets = build_switch_markets(groups, usage, usage_years, latest, latest_q,
+                                                       units_in_year, warnings.append)
+
+    # ---- Movers: yearly effect at the latest final year's Medicare use ------
+    # Change per billing unit times the code's units that year, only when the
+    # code was billed in the same unit then as in both compared quarters.
+    for c in compared:
+        row = usage.get(c["code"], {}).get(switch_year) if switch_year else None
+        unit_now = " ".join((c["dosage"] or "").upper().split())
+        same = units_in_year.get((c["code"], switch_year)) == {unit_now}
+        c["units_year"] = row["units"] if row and row["units"] is not None and same else None
+        c["effect"] = c["change"] * c["units_year"] if c["units_year"] is not None else None
+    with_effect = [c for c in compared if c["effect"]]
+    movers["effect"] = {
+        "increases": sorted((c for c in with_effect if c["effect"] > 0), key=lambda c: -c["effect"])[:TOP_N],
+        "decreases": sorted((c for c in with_effect if c["effect"] < 0), key=lambda c: c["effect"])[:TOP_N],
+    }
+
+    # ---- Home page: largest Part B drugs by Medicare spending --------------
+    top_year = max(usage_years) if usage_years else None
+    all_codes = {r["hcpcs_code"] for r in rows}  # codes that have a page on the site
+    newest_desc = {r["hcpcs_code"]: r["short_description"] for r in current}  # rows are in quarter order
+    top_drugs = sorted(((code, by_year[top_year]) for code, by_year in usage.items()
+                        if code in all_codes and top_year in by_year and by_year[top_year]["spending"] is not None),
+                       key=lambda x: (-x[1]["spending"], x[0]))[:TOP_DRUGS]
+    top_drugs = {"year": top_year, "preliminary": bool(top_year and usage_years[top_year]["preliminary"]),
+                 "rows": [{"code": code, "spending": r["spending"], "claims": r["claims"],
+                           "description": display_text(newest_desc.get(code))}
+                          for code, r in top_drugs]} if top_year else None
 
     new_codes = [code_row(latest[c]) for c in sorted(latest.keys() - prior.keys())]
     dropped_codes = [code_row(prior[c]) for c in sorted(prior.keys() - latest.keys())]
@@ -1246,7 +1278,8 @@ def main() -> int:
     common = {
         # The Biosimilars link appears once at least one group is published.
         "nav": NAV[:3] + ([("biosimilars.html", "Biosimilars")] if groups else [])
-               + [(NCR_PAGE, "NCR calculator")] + NAV[3:],
+               + [(NCR_PAGE, "NCR calculator")]
+               + ([(SWITCH_PAGE, "Switching calculator")] if switch_markets else []) + NAV[3:],
         # Added to the style.css and script links so browsers fetch them
         # again whenever they change instead of using an old saved copy.
         "asset_version": hashlib.sha256(STYLESHEET.read_bytes() + CHART_SCRIPT.read_bytes()
@@ -1267,10 +1300,12 @@ def main() -> int:
         (OUT / path).parent.mkdir(parents=True, exist_ok=True)
         (OUT / path).write_text(page, encoding="utf-8")
 
-    write("index.html", "index.html", s=summary, lead=lead, around=around, co=coinsurance)
+    write("index.html", "index.html", s=summary, lead=lead, around=around, co=coinsurance, top_drugs=top_drugs,
+          has_groups=bool(groups), has_switch=bool(switch_markets), switch_page=SWITCH_PAGE)
     write("coinsurance.html", "coinsurance.html", co=coinsurance)
     write("movers.html", "movers.html", s=summary, movers=movers, n_below_floor=n_below_floor,
-          spark_quarters=SPARK_QUARTERS)
+          spark_quarters=SPARK_QUARTERS, effect_year=switch_year,
+          n_effect=len(with_effect))
     write("changes.html", "changes.html", s=summary, new_codes=new_codes, dropped_codes=dropped_codes)
     for p in code_pages:
         write(f"codes/{p['code']}.html", "code.html", p=p, co_usual=usual_co)
@@ -1292,8 +1327,6 @@ def main() -> int:
           csv_kb=round(csv_path.stat().st_size / 1024), first_q=quarters[0],
           n_versions=len({(r["source_file"]) for r in rows}))
 
-    switch_year, switch_markets = build_switch_markets(groups, usage, usage_years, latest, latest_q,
-                                                       units_in_year, warnings.append)
     if switch_markets:
         write(SWITCH_PAGE, "switch_calculator.html", units_year=switch_year,
               switch_data={"quarter": quarter_label(latest_q), "year": switch_year, "markets": switch_markets},
