@@ -222,6 +222,15 @@ button:hover, .button:hover { background: var(--color-teal-dark); color: #ffffff
 .mover-list .sub { display: block; font-size: 13px; color: var(--color-text-2); }
 .mover-list .pct { font-size: 20px; font-weight: 600; white-space: nowrap; }
 
+/* Biosimilar group page: Medicare usage */
+.market { margin-top: var(--space-8); padding-top: var(--space-8); border-top: 1px solid var(--color-border); display: grid; gap: var(--space-4); }
+.market > h2 { margin: 0; font-size: 32px; }
+.market h3 { margin: var(--space-4) 0 var(--space-2); font-size: 20px; }
+.market .figures { padding-top: var(--space-2); }
+.market .figure .big { font-size: 34px; }
+.market-charts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-8); }
+@media (max-width: 820px) { .market-charts { grid-template-columns: minmax(0, 1fr); } }
+
 /* Summary figures */
 .figures { padding-top: 64px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-8); }
 .figure { display: grid; gap: 4px; align-content: start; }

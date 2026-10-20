@@ -148,4 +148,68 @@
     }
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw); else draw();
   };
+
+  // Short dollar amounts for bar axes: $1.2B, $450M, $12K.
+  function shortDollars(v) {
+    var a = Math.abs(v);
+    if (a >= 1e9) return "$" + (v / 1e9).toLocaleString("en-US", { maximumFractionDigits: 1 }) + "B";
+    if (a >= 1e6) return "$" + (v / 1e6).toLocaleString("en-US", { maximumFractionDigits: 1 }) + "M";
+    if (a >= 1e3) return "$" + (v / 1e3).toLocaleString("en-US", { maximumFractionDigits: 0 }) + "K";
+    return "$" + v.toLocaleString("en-US");
+  }
+  var cents = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // Stacked bars, one stack per year. series: [{label, values, colorVar}],
+  // drawn bottom to top in the order given. opts.format: "dollars" or "percent"
+  // (percent stacks run to 100).
+  window.drawStackedBars = function (canvas, labels, series, opts) {
+    if (!window.Chart || !canvas) return;
+    opts = opts || {};
+    var pct = opts.format === "percent";
+    var muted = css("--color-neutral-700"), text = css("--color-text"), divider = css("--color-divider");
+    var font = { family: css("--font-body") || "sans-serif", size: 12 };
+    var datasets = series.map(function (s) {
+      var color = css(s.colorVar);
+      return {
+        label: s.label, backgroundColor: color, borderColor: css("--color-surface"), borderWidth: 1,
+        data: s.values.map(function (v) { return v === null ? null : Number(v); }),
+        maxBarThickness: 56
+      };
+    });
+    function draw() {
+      new Chart(canvas, {
+        type: "bar",
+        data: { labels: labels, datasets: datasets },
+        options: {
+          maintainAspectRatio: false, animation: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: css("--color-surface"), titleColor: text, bodyColor: text,
+              borderColor: divider, borderWidth: 1, cornerRadius: 2, boxPadding: 4,
+              titleFont: font, bodyFont: font, itemSort: function (a, b) { return b.datasetIndex - a.datasetIndex; },
+              filter: function (c) { return c.parsed.y !== null; },
+              callbacks: {
+                label: function (c) {
+                  return " " + c.dataset.label + ": " + (pct ? c.parsed.y.toFixed(1) + "%" : cents.format(c.parsed.y));
+                }
+              }
+            }
+          },
+          scales: {
+            x: { stacked: true, grid: { display: false }, border: { display: false },
+                 ticks: { font: font, color: muted, maxRotation: 0, autoSkip: false } },
+            y: {
+              stacked: true, min: 0, max: pct ? 100 : undefined, border: { display: false },
+              grid: { color: divider, drawTicks: false },
+              ticks: { count: pct ? 5 : undefined, maxTicksLimit: 5, padding: 10, font: font, color: muted,
+                       callback: function (v) { return pct ? v + "%" : shortDollars(v); } }
+            }
+          }
+        }
+      });
+    }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw); else draw();
+  };
 })();

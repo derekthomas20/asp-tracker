@@ -10,7 +10,9 @@ Pages written to public/:
     changes.html        codes new or dropped this quarter
     coinsurance.html    codes with reduced (inflation-adjusted) coinsurance
     biosimilars.html    reference products and their biosimilars, grouped by
-    biosimilars/X.html  the owner's sheet (verified rows only); prices from CMS
+    biosimilars/X.html  the owner's sheet (verified rows only); prices from CMS;
+                        Medicare spending, claims share and states from the
+                        data.cms.gov usage files
     codes/XXXXX.html    one page per HCPCS code: chart, products (NDCs),
                         table, CMS source links
     search.html         find a code by code or drug name
@@ -55,6 +57,7 @@ from markupsafe import Markup
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "data" / "asp.duckdb"
 MANIFEST_PATH = ROOT / "data" / "manifest.json"
+CMS_DATA_MANIFEST = ROOT / "data" / "cms_data_manifest.json"  # data.cms.gov usage files
 TEMPLATES = ROOT / "site" / "templates"
 STYLESHEET = ROOT / "site" / "style.css"
 CHART_SCRIPT = ROOT / "site" / "charts.js"
@@ -165,6 +168,32 @@ def plain_percent(value: str | None) -> str:
 
 def number(value: int) -> str:
     return f"{value:,}"
+
+
+def big_money(value: Decimal | None) -> str:
+    """Large dollar totals for headlines: '$1.23 billion', '$45.6 million',
+    '$789,012'. Tables show the exact amount next to it."""
+    if value is None:
+        return "N/A"
+    for size, word in ((Decimal("1e9"), "billion"), (Decimal("1e6"), "million")):
+        if abs(value) >= size:
+            return f"${value / size:,.{1 if abs(value) >= size * 10 else 2}f} {word}"
+    return f"${value:,.0f}"
+
+
+def share_text(value: Decimal | None) -> str:
+    """A computed share, to one decimal place: '42.7%'."""
+    return "N/A" if value is None else f"{value:.1f}%"
+
+
+def count(value) -> str:
+    """CMS counts (claims, units, services): commas, and every decimal CMS
+    gave ('1,733,604', '13,002,343.6')."""
+    if value is None:
+        return "N/A"
+    value = Decimal(value).normalize()
+    places = max(0, -value.as_tuple().exponent)
+    return f"{value:,.{places}f}"
 
 
 def quarter_label(q: str) -> str:
@@ -383,6 +412,194 @@ def build_groups(group_rows: list[dict], latest: dict[str, dict], recent_limits,
             "sources": sorted({m["source_file"] for m in members}),
         })
     return groups
+
+
+# --------------------------------------------------------------------------
+# Medicare usage (data.cms.gov files; see scripts/cms_data.py)
+# --------------------------------------------------------------------------
+
+def load_usage(con) -> tuple[dict[str, dict[int, dict]], dict[int, dict], dict | None]:
+    """Medicare Part B spending per code per calendar year, from the best
+    source CMS has for each year:
+
+      1. the yearly Part B Spending by Drug file (final; has dosage units);
+      2. otherwise the full-year ("Q1-Q4") rows of the quarterly file,
+         marked preliminary. That file has no dosage units.
+
+    A year uses one source for every code, so codes are never compared
+    across sources within a year. When CMS posts the yearly file for a year
+    that so far came from the quarterly file, the yearly file takes over.
+
+    Returns (usage, years, ytd):
+      usage  {code: {year: {spending, claims, beneficiaries, units, per_unit, source_file}}}
+      years  {year: {"preliminary": bool, "source_file": set of files}}
+      ytd    the newest partial year from the newest quarterly release
+             ({label, year, quarters, by_code: {code: {spending, claims}}, source_files}),
+             or None
+    """
+    usage: dict[str, dict[int, dict]] = {}
+    years: dict[int, dict] = {}
+    for code, year, spend, units, claims, benes, per_unit, src in con.execute("""
+            SELECT hcpcs_code, data_year, total_spending, total_dosage_units, total_claims,
+                   total_beneficiaries, avg_spending_per_dosage_unit, source_file
+            FROM part_b_spending WHERE is_latest_release""").fetchall():
+        usage.setdefault(code, {})[year] = {"spending": spend, "claims": claims, "beneficiaries": benes,
+                                            "units": units, "per_unit": per_unit, "source_file": src}
+        years.setdefault(year, {"preliminary": False, "source_files": set()})["source_files"].add(src)
+
+    quarterly = con.execute("""
+        SELECT hcpcs_code, period_year, period_quarters, period_label, total_spending, total_claims,
+               total_beneficiaries, source_file, release_period
+        FROM part_b_spending_quarterly WHERE is_latest_release""").fetchall()
+    final_years = set(years)
+    for code, year, quarters, _, spend, claims, benes, src, _ in quarterly:
+        if quarters != "Q1-Q4" or year in final_years:
+            continue
+        usage.setdefault(code, {})[year] = {"spending": spend, "claims": claims, "beneficiaries": benes,
+                                            "units": None, "per_unit": None, "source_file": src}
+        years.setdefault(year, {"preliminary": True, "source_files": set()})["source_files"].add(src)
+
+    ytd = None
+    partial = [r for r in quarterly if r[2] != "Q1-Q4" and r[1] not in years]
+    if partial:
+        newest = max(r[8] for r in partial)
+        partial = [r for r in partial if r[8] == newest]
+        year = max(r[1] for r in partial)
+        partial = [r for r in partial if r[1] == year]
+        labels = {r[3] for r in partial}
+        if len(labels) != 1:
+            raise SystemExit(f"STOPPED: quarterly release {newest} has several partial periods for {year}: {labels}")
+        ytd = {"label": labels.pop(), "year": year, "quarters": partial[0][2],
+               "by_code": {r[0]: {"spending": r[4], "claims": r[5]} for r in partial},
+               "source_files": {r[7] for r in partial}}
+    return usage, years, ytd
+
+
+def load_geo(con, codes: set[str]) -> tuple[int | None, dict[str, dict[str, Decimal]], dict[str, str], set[str]]:
+    """Physician-billed services per code per state, newest year of the
+    Geography and Service file, summed over place of service.
+    Returns (year, {code: {state code: services}}, {state code: name}, source files)."""
+    year = con.execute("SELECT max(data_year) FROM physician_geo_service WHERE is_latest_release").fetchone()[0]
+    if year is None or not codes:
+        return None, {}, {}, set()
+    placeholders = ", ".join("?" for _ in codes)
+    rows = con.execute(f"""
+        SELECT hcpcs_code, geo_level, geo_code, geo_description, sum(total_services), any_value(source_file)
+        FROM physician_geo_service
+        WHERE is_latest_release AND data_year = ? AND hcpcs_code IN ({placeholders})
+        GROUP BY ALL""", [year, *sorted(codes)]).fetchall()
+    services: dict[str, dict[str, Decimal]] = {}
+    names, files = {}, set()
+    for code, level, geo_code, desc, total, src in rows:
+        key = "US" if level == "National" else geo_code
+        if not key:
+            continue
+        services.setdefault(code, {})[key] = total
+        if key != "US":
+            names[key] = desc
+        files.add(src)
+    return year, services, names, files
+
+
+def share(part, whole) -> Decimal | None:
+    """part / whole as a percent, or None when whole is zero or unknown."""
+    if part is None or not whole:
+        return None
+    return Decimal(part) / Decimal(whole) * 100
+
+
+def build_market(grp: dict, usage, years_info, ytd, geo, units_in_year) -> dict | None:
+    """Medicare usage for one biosimilar group: spending and claims by year,
+    biosimilar share of claims, the latest year in detail, and physician-billed
+    services by state. Every figure is a CMS figure or a sum/share of them."""
+    members = [grp["ref"], *grp["bios"]]
+    codes = [e["code"] for e in members]
+    bio_codes = set(codes[1:])
+    seen = sorted({y for c in codes for y in usage.get(c, {})})
+    if not seen:
+        return None
+
+    per_year = []
+    for y in range(seen[0], seen[-1] + 1):
+        info = years_info.get(y)
+        if info is None:
+            continue
+        prod = {c: usage.get(c, {}).get(y) for c in codes}
+        listed = [p for p in prod.values() if p]
+        claims_known = all(p["claims"] is not None for p in listed)
+        total_claims = sum(p["claims"] for p in listed if p["claims"] is not None)
+        bio_claims = sum(prod[c]["claims"] for c in bio_codes if prod[c] and prod[c]["claims"] is not None)
+        per_year.append({
+            "year": y,
+            "label": f"{y} (prelim.)" if info["preliminary"] else str(y),
+            "preliminary": info["preliminary"],
+            "spending": sum(p["spending"] for p in listed if p["spending"] is not None),
+            "claims": total_claims if claims_known else None,
+            "bio_share": share(bio_claims, total_claims) if claims_known else None,
+            "by_code": prod,
+            "claim_share": {c: (share(prod[c]["claims"], total_claims) if claims_known and prod[c] else None)
+                            for c in codes},
+        })
+    if not per_year:
+        return None
+    latest = per_year[-1]
+    final = next((y for y in reversed(per_year) if not y["preliminary"]), None)
+    prior = per_year[-2] if len(per_year) > 1 else None
+
+    products = []
+    for e in members:
+        f = final["by_code"].get(e["code"]) if final else None
+        l = latest["by_code"].get(e["code"])
+        products.append({
+            **{k: e[k] for k in ("code", "name", "role", "color_var")},
+            "final": f, "latest": l,
+            "latest_share": latest["claim_share"].get(e["code"]),
+            "ytd": (ytd["by_code"].get(e["code"]) if ytd else None),
+        })
+
+    # Charts: values as text so no float rounding happens here.
+    def series(value):
+        return [{"label": e["name"], "colorVar": e["color_var"],
+                 "values": [value(y, e["code"]) for y in per_year]} for e in members]
+    spend_series = series(lambda y, c: plain_decimal(y["by_code"][c]["spending"]) if y["by_code"][c] else None)
+    share_series = series(lambda y, c: (f"{y['claim_share'][c]:.2f}" if y["claim_share"][c] is not None else None))
+
+    # States: physician-billed services, only for codes billed in the same
+    # unit as the reference product in that year (services count billing units).
+    geo_year, geo_services, state_names, geo_files = geo
+    states, excluded, coverage = [], [], None
+    if geo_year is not None:
+        ref_units = units_in_year.get((codes[0], geo_year), set())
+        comparable = [c for c in codes if len(ref_units) == 1 and units_in_year.get((c, geo_year)) == ref_units]
+        excluded = [e["name"] for e in members if e["code"] not in comparable and geo_services.get(e["code"])]
+        if comparable and any(geo_services.get(c) for c in comparable):
+            for key in sorted({k for c in comparable for k in geo_services.get(c, {})} - {"US"}):
+                total = sum(geo_services.get(c, {}).get(key, 0) for c in comparable)
+                bios = sum(geo_services.get(c, {}).get(key, 0) for c in comparable if c in bio_codes)
+                if total:
+                    states.append({"name": state_names.get(key, key), "services": total,
+                                   "bio_share": share(bios, total)})
+            states.sort(key=lambda s: (-s["services"], s["name"]))
+            # Share of the year's Medicare units that the physician-billed
+            # file covers, when the yearly spending file has that year.
+            nat = sum(geo_services.get(c, {}).get("US", 0) for c in comparable)
+            units = [usage.get(c, {}).get(geo_year, {}).get("units") for c in comparable
+                     if geo_services.get(c, {}).get("US")]
+            if units and all(u is not None for u in units) and not years_info.get(geo_year, {}).get("preliminary", True):
+                coverage = share(nat, sum(units))
+    return {
+        "years": per_year, "latest": latest, "final": final, "prior": prior,
+        "products": products, "ytd": ytd,
+        "ytd_spending": (sum(p["ytd"]["spending"] for p in products if p["ytd"])
+                         if any(p["ytd"] for p in products) else None),
+        # A preliminary year gets a second label line ("2025" / "prelim.").
+        "chart_labels": [[str(y["year"]), "prelim."] if y["preliminary"] else str(y["year"]) for y in per_year],
+        "spend_series": spend_series, "share_series": share_series,
+        "geo_year": geo_year, "states": states, "geo_excluded": excluded, "geo_coverage": coverage,
+        "source_files": sorted(set().union(*(years_info[y["year"]]["source_files"] for y in per_year),
+                                           ytd["source_files"] if ytd else set(),
+                                           geo_files if states else set())),
+    }
 
 
 def load_products(con, quarter: str) -> dict[str, list[dict]]:
@@ -607,7 +824,8 @@ def make_env() -> Environment:
     env.filters.update(money=money, cents=cents, signed_money=signed_money, percent=percent,
                        arrow_percent=arrow_percent, plain_percent=plain_percent,
                        num=number, quarter=quarter_label, months=quarter_months,
-                       effective=effective_range, long_date=long_date, desc=display_text)
+                       effective=effective_range, long_date=long_date, desc=display_text,
+                       big_money=big_money, share=share_text, count=count)
     return env
 
 
@@ -632,7 +850,13 @@ def main() -> int:
     products = load_products(con, latest_q)
     ncr_packages = load_packages(con, latest_q)
     group_rows = load_groups(con)
+    usage, usage_years, usage_ytd = load_usage(con)
+    geo = load_geo(con, {g["hcpcs_code"] for g in group_rows if g["verified"]})
     con.close()
+    if CMS_DATA_MANIFEST.exists():
+        with CMS_DATA_MANIFEST.open(encoding="utf-8") as f:
+            for e in json.load(f)["files"]:
+                cms_url[e["local_path"]] = e["url"]
     warnings: list[str] = []
 
     current = [r for r in rows if r["is_current"]]
@@ -709,6 +933,17 @@ def main() -> int:
 
     # ---- Biosimilar groups (owner's sheet; prices from CMS) ----------------
     groups = build_groups(group_rows, latest, recent_limits, warnings.append)
+    # Billing units each code had in each calendar year, from the payment
+    # limit files (usage counts are in billing units).
+    units_in_year: dict[tuple[str, int], set[str]] = {}
+    for r in current:
+        units_in_year.setdefault((r["hcpcs_code"], int(r["effective_quarter"][:4])), set()).add(
+            " ".join((r["hcpcs_dosage"] or "").upper().split()))
+    for grp in groups:
+        grp["market"] = build_market(grp, usage, usage_years, usage_ytd, geo, units_in_year)
+        if grp["market"]:
+            grp["market"]["sources"] = [{"name": f.rsplit("/", 1)[-1], "url": cms_url.get(f)}
+                                        for f in grp["market"]["source_files"]]
     ncr_markets = build_ncr(groups, ncr_packages, warnings.append)
     group_of = {}
     for grp in groups:

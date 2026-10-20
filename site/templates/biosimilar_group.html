@@ -64,6 +64,100 @@
 </div>
 <p class="note">Payment limits are from the CMS {{ latest_q|quarter }} file. Which products are grouped together comes from the site’s biosimilar groups list
 ({{ g.sources|join(", ") }}), checked by hand; it is not a CMS file. “CMS 8% add-on note” shows whether CMS’s notes say the 8% of reference product add-on was applied.</p>
+
+{% set m = g.market %}
+{% if m %}
+<section class="market" aria-labelledby="market-h">
+  <span class="kicker">Medicare Part B usage</span>
+  <h2 id="market-h">{{ g.molecule }} market in Medicare</h2>
+  <div class="figures">
+    <div class="figure">
+      <span class="big">{{ m.latest.spending|big_money }}</span>
+      <span class="label">Medicare Part B spending, {{ m.latest.year }}{% if m.latest.preliminary %} (preliminary){% endif %}</span>
+    </div>
+    <div class="figure">
+      <span class="big">{{ m.latest.bio_share|share }}</span>
+      <span class="label">of {{ m.latest.year }} claims were for biosimilars{% if m.prior and m.prior.bio_share is not none %}, vs. {{ m.prior.bio_share|share }} in {{ m.prior.year }}{% endif %}</span>
+    </div>
+    {% if m.ytd_spending is not none %}
+    <div class="figure">
+      <span class="big">{{ m.ytd_spending|big_money }}</span>
+      <span class="label">spending so far in {{ m.ytd.year }} ({{ m.ytd.quarters }}, preliminary)</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="market-charts">
+    <div>
+      <h3>Spending by product</h3>
+      <div class="chart"><canvas id="spend-chart" role="img" aria-label="Stacked bars of Medicare spending for each {{ g.molecule|lower }} product by year. The same figures are in the table below."></canvas></div>
+    </div>
+    <div>
+      <h3>Share of claims</h3>
+      <div class="chart"><canvas id="share-chart" role="img" aria-label="Stacked bars of each product's share of Medicare claims by year. The latest year's shares are in the table below."></canvas></div>
+    </div>
+  </div>
+  <ul class="legend">
+    {% for e in [g.ref] + g.bios %}<li><span class="swatch" style="background:var({{ e.color_var }});height:10px;width:10px"></span>{{ e.name }}{% if e.role == "reference" %} (reference){% endif %}</li>{% endfor %}
+  </ul>
+  <span class="chart-caption">Medicare Part B fee-for-service spending and claims by calendar year.{% if m.years|selectattr("preliminary")|list %} Years marked “prelim.” come from CMS’s quarterly spending file and will be replaced when CMS publishes the yearly file.{% endif %}
+  Claims are used for share because the quarterly file has no dosage units. A product with no bar for a year is not in CMS’s file for that year.</span>
+
+  <h3>By product</h3>
+  <div class="table-wrap">
+  <table class="stack">
+    <thead><tr>
+      <th>Product</th>
+      {% if m.final %}<th class="num">Spending {{ m.final.year }}</th><th class="num">Units {{ m.final.year }}</th><th class="num">Spending per unit {{ m.final.year }}</th>{% endif %}
+      {% if m.latest is not sameas m.final %}<th class="num">Spending {{ m.latest.year }} (prelim.)</th>{% endif %}
+      <th class="num">Claims {{ m.latest.year }}</th><th class="num">Share of claims {{ m.latest.year }}</th>
+      {% if m.ytd %}<th class="num">Spending {{ m.ytd.label }}</th>{% endif %}
+    </tr></thead>
+    <tbody>
+    {% for e in m.products %}
+      <tr>
+        <td data-label="Product"><a class="name" href="{{ root }}codes/{{ e.code }}.html">{{ e.name }}</a> <span class="muted">{{ e.code }}</span></td>
+        {% if m.final %}
+        <td data-label="Spending {{ m.final.year }}" class="num">{{ e.final.spending|money if e.final else "–" }}</td>
+        <td data-label="Units {{ m.final.year }}" class="num">{{ e.final.units|count if e.final else "–" }}</td>
+        <td data-label="Spending per unit {{ m.final.year }}" class="num">{{ e.final.per_unit|money if e.final else "–" }}</td>
+        {% endif %}
+        {% if m.latest is not sameas m.final %}<td data-label="Spending {{ m.latest.year }} (prelim.)" class="num">{{ e.latest.spending|money if e.latest else "–" }}</td>{% endif %}
+        <td data-label="Claims {{ m.latest.year }}" class="num">{{ e.latest.claims|count if e.latest else "–" }}</td>
+        <td data-label="Share of claims {{ m.latest.year }}" class="num strong">{{ e.latest_share|share if e.latest else "–" }}</td>
+        {% if m.ytd %}<td data-label="Spending {{ m.ytd.label }}" class="num">{{ e.ytd.spending|money if e.ytd else "–" }}</td>{% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="note">Spending, units and claims are CMS figures{% if m.final %}; spending per unit is CMS’s own average for {{ m.final.year }}{% endif %}. Units are billing units, which can differ between codes, so compare units only between codes billed per the same amount. Shares are this site’s calculation from CMS claims.
+  {% if m.latest.preliminary and m.final %}CMS may count spending differently in its quarterly and yearly files, so treat changes between {{ m.final.year }} and {{ m.latest.year }} with care.{% endif %}</p>
+
+  {% if m.states %}
+  <h3>Physician-billed use by state, {{ m.geo_year }}</h3>
+  <p class="note">From CMS’s Physician &amp; Other Practitioners by Geography and Service file, which covers drugs billed by physicians and other practitioners, mostly in offices. Drugs billed by hospital outpatient departments are not in it.
+  {% if m.geo_coverage is not none %}For these products it covers {{ m.geo_coverage|share }} of {{ m.geo_year }} Medicare units.{% endif %}
+  CMS leaves out a state’s row for a product when fewer than 11 patients received it, so small states may undercount.
+  {% if m.geo_excluded %}Left out because their billing unit differs from {{ g.ref.name }}’s: {{ m.geo_excluded|join(", ") }}.{% endif %}</p>
+  <details>
+    <summary>Show {{ m.states|length }} states and territories</summary>
+    <div class="table-wrap">
+    <table class="stack">
+      <thead><tr><th>State</th><th class="num">Services (billing units)</th><th class="num">Biosimilar share</th></tr></thead>
+      <tbody>
+      {% for st in m.states %}
+        <tr><td data-label="State">{{ st.name }}</td><td data-label="Services" class="num">{{ st.services|count }}</td><td data-label="Biosimilar share" class="num">{{ st.bio_share|share }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </details>
+  {% endif %}
+
+  <p class="note">Sources: {% for src in m.sources %}{% if src.url %}<a href="{{ src.url }}">{{ src.name }}</a>{% else %}{{ src.name }}{% endif %}{{ ", " if not loop.last }}{% endfor %} (data.cms.gov).</p>
+</section>
+{% endif %}
 {% endblock %}
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -73,5 +167,9 @@ drawGroupChart(document.getElementById("group-chart"), {{ chart_labels|tojson }}
   {% for b in g.bios %}{ label: {{ b.name|tojson }}, values: {{ b.chart_values|tojson }}, colorVar: {{ b.color_var|tojson }}, width: 1.75 },
   {% endfor %}{ label: {{ g.ref.name|tojson }}, values: {{ g.ref.chart_values|tojson }}, colorVar: "--color-navy", width: 3.5 }
 ]);
+{% if g.market %}
+drawStackedBars(document.getElementById("spend-chart"), {{ g.market.chart_labels|tojson }}, {{ g.market.spend_series|tojson }}, { format: "dollars" });
+drawStackedBars(document.getElementById("share-chart"), {{ g.market.chart_labels|tojson }}, {{ g.market.share_series|tojson }}, { format: "percent" });
+{% endif %}
 </script>
 {% endblock %}
