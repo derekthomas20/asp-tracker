@@ -535,3 +535,10 @@ tr.superseded td { color: var(--color-text-2); }
   }
   table.stack .change-cell { justify-content: flex-end; }
 }
+
+/* Switching calculator result cards */
+.switch-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--space-4); }
+.switch-card { display: grid; gap: 2px; padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-surface); }
+.switch-card .label { font-size: 13px; color: var(--color-text-2); }
+.switch-card .value { font-family: var(--font-heading); font-size: 20px; font-weight: 800; white-space: nowrap; }
+.switch-card .sub { font-size: 13px; color: var(--color-text-2); }

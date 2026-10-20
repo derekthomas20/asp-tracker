@@ -19,6 +19,10 @@ Pages written to public/:
     search.html         find a code by code or drug name
     downloads.html      the full history as one CSV (in downloads/)
     about.html          where the data comes from and what it means
+    tools/switching-calculator/index.html
+                        what-if: move reference product units to a
+                        biosimilar; units from the latest final year of
+                        Part B Spending by Drug, limits from the latest quarter
     tools/ncr-calculator/index.html
                         biosimilar net cost recovery calculator: products from
                         the sheet, packages from the CMS crosswalk, limits from
@@ -67,6 +71,8 @@ NCR_SCRIPT = ROOT / "site" / "ncr.js"
 MAP_SCRIPT = ROOT / "site" / "usmap.js"  # state map on the biosimilar group pages
 NCR_MARKETS = ROOT / "data" / "ncr_markets.json"  # hand-maintained doses; holds no prices
 NCR_PAGE = "tools/ncr-calculator/index.html"
+SWITCH_PAGE = "tools/switching-calculator/index.html"
+SWITCH_SCRIPT = ROOT / "site" / "switch.js"
 STATIC = ROOT / "site" / "static"  # logo and favicons
 OUT = ROOT / "public"
 CSV_NAME = "asp-payment-limits-history.csv"
@@ -699,6 +705,51 @@ def build_market(grp: dict, usage, years_info, ytd, geo, units_in_year) -> dict 
     }
 
 
+def build_switch_markets(groups: list[dict], usage, years_info, latest: dict[str, dict],
+                         latest_q: str, units_in_year, warn) -> tuple[int | None, list[dict]]:
+    """Data for the switching calculator: for each biosimilar group, every
+    product's Medicare units in the latest final year (yearly Part B Spending
+    by Drug file) and its payment limit and coinsurance in the latest quarter.
+    A product is included only when its billing unit is the reference
+    product's, both in that year and in the latest quarter, so units can be
+    moved one for one. Returns (units year, markets)."""
+    final_years = [y for y, info in years_info.items() if not info["preliminary"]]
+    if not final_years:
+        return None, []
+    year = max(final_years)
+    markets = []
+    for grp in groups:
+        ref = grp["ref"]
+        ref_unit = " ".join((ref["dosage"] or "").upper().split())
+        products, left_out = [], []
+        for e in [ref, *grp["bios"]]:
+            r = latest[e["code"]]
+            unit_then = units_in_year.get((e["code"], year))
+            if e["limit"] is None:
+                left_out.append(f"{e['name']} (no {quarter_label(latest_q)} payment limit)")
+                continue
+            if not same_unit(e["dosage"], ref["dosage"]) or (unit_then and unit_then != {ref_unit}):
+                left_out.append(f"{e['name']} (billed per a different unit)")
+                continue
+            row = usage.get(e["code"], {}).get(year)
+            co = to_decimal(r["coinsurance_percentage"])
+            if co is None:
+                left_out.append(f"{e['name']} (no coinsurance percentage in the CMS file)")
+                continue
+            products.append({"code": e["code"], "name": e["name"], "role": e["role"],
+                             "units": plain_decimal(row["units"]) if row and row["units"] is not None else "0",
+                             "limit": plain_decimal(e["limit"]), "coinsurance": plain_decimal(co)})
+        ref_p = next((p for p in products if p["role"] == "reference"), None)
+        bios = [p for p in products if p["role"] == "biosimilar"]
+        if ref_p is None or Decimal(ref_p["units"]) == 0 or not bios:
+            warn(f"Switching calculator: {grp['molecule']} left out (reference product has no "
+                 f"{year} units in a matching billing unit, or no biosimilar can be compared).")
+            continue
+        markets.append({"id": grp["slug"], "name": grp["molecule"], "unit": ref["dosage"],
+                        "products": products, "left_out": left_out})
+    return year, markets
+
+
 def load_products(con, quarter: str) -> dict[str, list[dict]]:
     """NDC products mapped to each HCPCS code in the quarter's current
     NDC-HCPCS crosswalk files. One entry per NDC (an NDC listed in more than
@@ -1179,6 +1230,7 @@ def main() -> int:
     shutil.copy2(CHART_SCRIPT, OUT / "charts.js")
     shutil.copy2(NCR_SCRIPT, OUT / "ncr.js")
     shutil.copy2(MAP_SCRIPT, OUT / "usmap.js")
+    shutil.copy2(SWITCH_SCRIPT, OUT / "switch.js")
     shutil.copytree(STATIC, OUT / "static")
 
     # The header search box suggests codes as you type. Its list is written as
@@ -1198,7 +1250,8 @@ def main() -> int:
         # Added to the style.css and script links so browsers fetch them
         # again whenever they change instead of using an old saved copy.
         "asset_version": hashlib.sha256(STYLESHEET.read_bytes() + CHART_SCRIPT.read_bytes()
-                                        + NCR_SCRIPT.read_bytes() + MAP_SCRIPT.read_bytes()).hexdigest()[:10],
+                                        + NCR_SCRIPT.read_bytes() + MAP_SCRIPT.read_bytes()
+                                        + SWITCH_SCRIPT.read_bytes()).hexdigest()[:10],
         "latest_q": latest_q,
         "source_page": manifest["source_page"],
         "top_n": TOP_N,
@@ -1216,12 +1269,6 @@ def main() -> int:
 
     write("index.html", "index.html", s=summary, lead=lead, around=around, co=coinsurance)
     write("coinsurance.html", "coinsurance.html", co=coinsurance)
-    if groups:
-        (OUT / "biosimilars").mkdir()
-        write("biosimilars.html", "biosimilars.html", groups=groups, groups_source=groups_source)
-        for grp in groups:
-            write(f"biosimilars/{grp['slug']}.html", "biosimilar_group.html", g=grp, groups=groups,
-                  chart_labels=[quarter_label(q) for q in recent_qs], groups_source=groups_source)
     write("movers.html", "movers.html", s=summary, movers=movers, n_below_floor=n_below_floor,
           spark_quarters=SPARK_QUARTERS)
     write("changes.html", "changes.html", s=summary, new_codes=new_codes, dropped_codes=dropped_codes)
@@ -1245,6 +1292,23 @@ def main() -> int:
           csv_kb=round(csv_path.stat().st_size / 1024), first_q=quarters[0],
           n_versions=len({(r["source_file"]) for r in rows}))
 
+    switch_year, switch_markets = build_switch_markets(groups, usage, usage_years, latest, latest_q,
+                                                       units_in_year, warnings.append)
+    if switch_markets:
+        write(SWITCH_PAGE, "switch_calculator.html", units_year=switch_year,
+              switch_data={"quarter": quarter_label(latest_q), "year": switch_year, "markets": switch_markets},
+              units_sources=[{"name": f.rsplit("/", 1)[-1], "url": cms_url.get(f)}
+                             for f in sorted(usage_years[switch_year]["source_files"])])
+    for grp in groups:  # group pages link to their market in the calculator
+        grp["in_switch"] = any(m["id"] == grp["slug"] for m in switch_markets)
+
+    if groups:  # after the switching calculator, which they link to
+        (OUT / "biosimilars").mkdir()
+        write("biosimilars.html", "biosimilars.html", groups=groups, groups_source=groups_source)
+        for grp in groups:
+            write(f"biosimilars/{grp['slug']}.html", "biosimilar_group.html", g=grp, groups=groups,
+                  chart_labels=[quarter_label(q) for q in recent_qs], groups_source=groups_source)
+
     ncr_data = {"quarter": quarter_label(latest_q), "markets": ncr_markets}
     write(NCR_PAGE, "ncr_calculator.html", ncr_data=ncr_data, sales_q=quarter_offset(latest_q, -2))
     ncr_codes = {p["hcpcs"] for m in ncr_markets for p in m["products"] if p["status"] == "cms"}
@@ -1263,6 +1327,7 @@ def main() -> int:
     print(f"  biosimilar groups published: {len(groups)}"
           + (f" (from {', '.join(groups_source)})" if groups_source else " (no sheet snapshot loaded)"))
     print(f"  NCR calculator: {len(ncr_markets)} markets, {len(ncr_codes)} codes priced from {latest_q}")
+    print(f"  switching calculator: {len(switch_markets)} markets, units from {switch_year}")
     if mismatch:
         print(f"\nNOTE: these codes have a reduced coinsurance percentage or the CMS note "
               f"'{INFLATION_NOTE}', but not both: {', '.join(mismatch)}")
