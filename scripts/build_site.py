@@ -14,6 +14,7 @@ Pages written to public/:
                         Medicare spending, claims share and states from the
                         data.cms.gov usage files
     codes/XXXXX.html    one page per HCPCS code: chart, products (NDCs),
+                        Medicare usage by year (data.cms.gov files),
                         table, CMS source links
     search.html         find a code by code or drug name
     downloads.html      the full history as one CSV (in downloads/)
@@ -477,7 +478,7 @@ def load_usage(con) -> tuple[dict[str, dict[int, dict]], dict[int, dict], dict |
         if len(labels) != 1:
             raise SystemExit(f"STOPPED: quarterly release {newest} has several partial periods for {year}: {labels}")
         ytd = {"label": labels.pop(), "year": year, "quarters": partial[0][2],
-               "by_code": {r[0]: {"spending": r[4], "claims": r[5]} for r in partial},
+               "by_code": {r[0]: {"spending": r[4], "claims": r[5], "beneficiaries": r[6]} for r in partial},
                "source_files": {r[7] for r in partial}}
     return usage, years, ytd
 
@@ -506,6 +507,71 @@ def load_geo(con, codes: set[str]) -> tuple[int | None, dict[str, dict[str, Deci
             names[key] = desc
         files.add(src)
     return year, services, names, files
+
+
+def load_discarded(con) -> dict[str, dict]:
+    """Newest year of the Discarded Drug Units file, per code:
+    {code: {year, allowed, discarded, pct_discarded, source_file}}."""
+    rows = con.execute("""
+        SELECT hcpcs_code, data_year, total_allowed_amount, total_allowed_discarded_amount,
+               pct_discarded_units, source_file
+        FROM discarded_drug_units
+        WHERE is_latest_release AND data_year = (SELECT max(data_year) FROM discarded_drug_units)
+    """).fetchall()
+    return {code: {"year": year, "allowed": allowed, "discarded": disc, "pct_discarded": pct,
+                   "source_file": src} for code, year, allowed, disc, pct, src in rows
+            if pct is not None and disc is not None and allowed is not None}  # some CMS rows are blank
+
+
+TOP_STATES = 10  # rows in the code page's top states list
+
+
+def build_code_usage(code: str, usage, years_info, ytd, geo, discarded) -> dict | None:
+    """Medicare usage for one code page: one row per year (final years from
+    the yearly file, then preliminary full years from the quarterly file),
+    spending so far this year, the discarded-drug share, and the states
+    with the most physician-billed services."""
+    by_year = usage.get(code, {})
+    years = []
+    for y in sorted(by_year):
+        r = by_year[y]
+        years.append({"year": y, "preliminary": years_info[y]["preliminary"], **r})
+    ytd_row = ytd["by_code"].get(code) if ytd else None
+    disc = discarded.get(code)
+    geo_year, geo_services, state_names, geo_files = geo
+    services = geo_services.get(code, {})
+    states = sorted(((state_names.get(k, k), v) for k, v in services.items() if k != "US"),
+                    key=lambda s: (-s[1], s[0]))
+    if not years and not ytd_row and not disc and not states:
+        return None
+    national = services.get("US")
+    coverage = None
+    if national is not None and geo_year in by_year and not years_info[geo_year]["preliminary"]:
+        coverage = share(national, by_year[geo_year]["units"])
+    files = {y["source_file"] for y in years}
+    if ytd_row:
+        files |= ytd["source_files"]
+    if disc:
+        files.add(disc["source_file"])
+    if states:
+        files |= {f for f in geo_files if f"/{geo_year}/" in f}
+    latest = years[-1] if years else None
+    return {
+        "years": list(reversed(years)),  # newest first in the table
+        "latest": latest,
+        "has_units": any(y["units"] is not None for y in years),
+        "ytd": ({**ytd_row, "label": ytd["label"], "year": ytd["year"], "quarters": ytd["quarters"]}
+                if ytd_row else None),
+        "discarded": disc,
+        "geo_year": geo_year if states else None,
+        "states": [{"name": n, "services": v, "share": share(v, national)} for n, v in states[:TOP_STATES]],
+        "n_states": len(states),
+        "geo_coverage": coverage,
+        "chart_labels": [[str(y["year"]), "prelim."] if y["preliminary"] else str(y["year"]) for y in years],
+        "chart_series": [{"label": "Medicare spending", "colorVar": "--color-teal",
+                          "values": [plain_decimal(y["spending"]) or None for y in years]}],
+        "source_files": sorted(files),
+    }
 
 
 def share(part, whole) -> Decimal | None:
@@ -882,7 +948,8 @@ def main() -> int:
     ncr_packages = load_packages(con, latest_q)
     group_rows = load_groups(con)
     usage, usage_years, usage_ytd = load_usage(con)
-    geo = load_geo(con, {g["hcpcs_code"] for g in group_rows if g["verified"]})
+    geo = load_geo(con, {r["hcpcs_code"] for r in rows})
+    discarded = load_discarded(con)
     con.close()
     if CMS_DATA_MANIFEST.exists():
         with CMS_DATA_MANIFEST.open(encoding="utf-8") as f:
@@ -1083,7 +1150,11 @@ def main() -> int:
             "notes": display_text(newest["notes"]),
             "group": group_of.get(code),
             "products": code_products,
+            "usage": build_code_usage(code, usage, usage_years, usage_ytd, geo, discarded),
         })
+        u = code_pages[-1]["usage"]
+        if u:
+            u["sources"] = [{"name": f.rsplit("/", 1)[-1], "url": cms_url.get(f)} for f in u["source_files"]]
 
     # ---- Home page lead story ---------------------------------------------
     # The largest percent increase (same ranking and $1 floor as Movers), with

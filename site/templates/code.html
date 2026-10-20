@@ -65,6 +65,78 @@
   </aside>
 </div>
 
+{% set u = p.usage %}
+{% if u %}
+<section class="market" aria-labelledby="usage-h">
+  <span class="kicker">Medicare Part B usage</span>
+  <h2 id="usage-h">How much Medicare uses {{ p.code }}</h2>
+  {% if u.latest %}
+  <div class="figures">
+    <div class="figure"><span class="big">{{ u.latest.spending|short_money }}</span>
+      <span class="label">Medicare Part B spending, {{ u.latest.year }}{% if u.latest.preliminary %} (preliminary){% endif %}</span></div>
+    <div class="figure"><span class="big">{{ u.latest.claims|count }}</span>
+      <span class="label">claims in {{ u.latest.year }}{% if u.latest.preliminary %} (preliminary){% endif %}</span></div>
+    <div class="figure"><span class="big">{{ u.latest.beneficiaries|count }}</span>
+      <span class="label">patients in {{ u.latest.year }}{% if u.latest.preliminary %} (preliminary){% endif %}</span></div>
+    {% if u.ytd %}
+    <div class="figure"><span class="big">{{ u.ytd.spending|short_money }}</span>
+      <span class="label">spending so far in {{ u.ytd.year }} ({{ u.ytd.quarters }}, preliminary)</span></div>
+    {% endif %}
+  </div>
+  {% if u.years|length > 1 %}
+  <div class="chart usage-chart"><canvas id="usage-chart" role="img" aria-label="Bars of Medicare Part B spending on {{ p.code }} by year. The same figures are in the table below."></canvas></div>
+  {% endif %}
+  <div class="table-wrap">
+  <table class="stack">
+    <thead><tr><th>Year</th><th class="num">Spending</th><th class="num">Claims</th><th class="num">Patients</th>{% if u.has_units %}<th class="num">Billing units</th><th class="num">Spending per unit</th>{% endif %}</tr></thead>
+    <tbody>
+    {% if u.ytd %}
+      <tr><td data-label="Year">{{ u.ytd.label }} <span class="tag">preliminary</span></td>
+        <td data-label="Spending" class="num">{{ u.ytd.spending|money }}</td>
+        <td data-label="Claims" class="num">{{ u.ytd.claims|count }}</td>
+        <td data-label="Patients" class="num">{{ u.ytd.beneficiaries|count }}</td>
+        {% if u.has_units %}<td data-label="Billing units" class="num muted">–</td><td data-label="Spending per unit" class="num muted">–</td>{% endif %}</tr>
+    {% endif %}
+    {% for y in u.years %}
+      <tr><td data-label="Year">{{ y.year }}{% if y.preliminary %} <span class="tag">preliminary</span>{% endif %}</td>
+        <td data-label="Spending" class="num strong">{{ y.spending|money }}</td>
+        <td data-label="Claims" class="num">{{ y.claims|count }}</td>
+        <td data-label="Patients" class="num">{{ y.beneficiaries|count }}</td>
+        {% if u.has_units %}<td data-label="Billing units" class="num">{{ y.units|count if y.units is not none else "–" }}</td>
+        <td data-label="Spending per unit" class="num">{{ y.per_unit|money if y.per_unit is not none else "–" }}</td>{% endif %}</tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="note">Medicare Part B fee-for-service spending, claims and patients (beneficiaries) by calendar year, as CMS reports them. Spending per unit is CMS’s own average.
+  {% if u.years|selectattr("preliminary")|list %}Preliminary years come from CMS’s quarterly spending file, which has no billing units; they will be replaced when CMS publishes the yearly file, and CMS may count spending differently in the two files.{% endif %}
+  {% if p.unit_changed %}This code’s billing unit changed over time, so units from different years may not be comparable.{% endif %}</p>
+  {% endif %}
+
+  {% if u.discarded %}
+  <h3>Discarded drug, {{ u.discarded.year }}</h3>
+  <p>{{ (u.discarded.pct_discarded * 100)|share }} of the {{ u.discarded.year }} Medicare allowed amount for {{ p.code }} ({{ u.discarded.discarded|money }} of {{ u.discarded.allowed|money }}) was for drug discarded from single-dose containers, not given to the patient.</p>
+  {% endif %}
+
+  {% if u.states %}
+  <h3>Top states for physician-billed use, {{ u.geo_year }}</h3>
+  <div class="table-wrap">
+  <table class="stack">
+    <thead><tr><th>State</th><th class="num">Services (billing units)</th><th class="num">Share of US</th></tr></thead>
+    <tbody>
+    {% for st in u.states %}
+      <tr><td data-label="State">{{ st.name }}</td><td data-label="Services" class="num">{{ st.services|count }}</td><td data-label="Share of US" class="num">{{ st.share|share }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="note">Top {{ u.states|length }} of {{ u.n_states }} states and territories in CMS’s Physician &amp; Other Practitioners by Geography and Service file. It covers drugs billed by physicians and other practitioners, mostly in offices, not by hospital outpatient departments{% if u.geo_coverage is not none %}; for {{ p.code }} that is {{ u.geo_coverage|share }} of {{ u.geo_year }} Medicare units{% endif %}. CMS leaves out a state when fewer than 11 patients received the drug there.</p>
+  {% endif %}
+
+  <p class="note">Sources: {% for src in u.sources %}{% if src.url %}<a href="{{ src.url }}">{{ src.name }}</a>{% else %}{{ src.name }}{% endif %}{{ ", " if not loop.last }}{% endfor %} (data.cms.gov).</p>
+</section>
+{% endif %}
+
 <h2>Products billed under {{ p.code }}</h2>
 {% if p.products %}
 <p class="note">From the {{ latest_q|quarter }} NDC–HCPCS crosswalk. “Limit / pkg” is the {{ latest_q|quarter }} payment limit times the billing units in one package.</p>
@@ -128,5 +200,8 @@
 <script src="{{ root }}charts.js?v={{ asset_version }}"></script>
 <script>
 drawLimitChart(document.getElementById("chart"), {{ p.chart_labels|tojson }}, {{ p.chart_values|tojson }});
+{% if p.usage and p.usage.years|length > 1 %}
+drawStackedBars(document.getElementById("usage-chart"), {{ p.usage.chart_labels|tojson }}, {{ p.usage.chart_series|tojson }}, { format: "dollars" });
+{% endif %}
 </script>
 {% endblock %}
