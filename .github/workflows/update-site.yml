@@ -48,6 +48,11 @@ jobs:
         continue-on-error: true
         run: python scripts/scrape.py
 
+      - name: Download new or revised data.cms.gov usage files
+        id: cmsdata
+        continue-on-error: true
+        run: python scripts/fetch_cms_data.py
+
       - name: Download the biosimilar_groups sheet
         id: groups
         continue-on-error: true
@@ -55,7 +60,7 @@ jobs:
 
       - name: Commit new files to main
         run: |
-          git add raw data/manifest.json reference/biosimilar_groups reference/manifest.json
+          git add raw data/manifest.json data/cms_data_manifest.json reference/biosimilar_groups reference/manifest.json
           if git diff --cached --quiet; then
             echo "Nothing new to commit."
             exit 0
@@ -93,9 +98,10 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Report download problems
-        if: steps.scrape.outcome == 'failure' || steps.groups.outcome == 'failure'
+        if: steps.scrape.outcome == 'failure' || steps.cmsdata.outcome == 'failure' || steps.groups.outcome == 'failure'
         run: |
           echo "scrape.py: ${{ steps.scrape.outcome }}"
+          echo "fetch_cms_data.py: ${{ steps.cmsdata.outcome }}"
           echo "fetch_groups.py: ${{ steps.groups.outcome }}"
           echo "The site was published with the files already saved. Open the failed step above to see why."
           exit 1

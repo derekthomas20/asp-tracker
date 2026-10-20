@@ -226,4 +226,6 @@ public/
 
 # Half-finished downloads left behind if scrape.py is stopped mid-download
 *.zip.part
+*.csv.part
+*.gz.part
 *.json.tmp

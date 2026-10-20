@@ -13,6 +13,11 @@ builds these tables:
                      groupings, from the newest snapshot saved by
                      scripts/fetch_groups.py (not a CMS file; no prices)
 
+It also loads the Medicare usage files listed in data/cms_data_manifest.json
+(written by scripts/fetch_cms_data.py); see scripts/cms_data.py for those
+tables (part_b_spending, part_b_spending_quarterly, discarded_drug_units,
+physician_geo_service).
+
 When CMS has posted more than one version of a file for the same quarter,
 every version is loaded and the newest one has is_current = true.
 
@@ -41,6 +46,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import duckdb
+
+import cms_data
 
 ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = ROOT / "data" / "manifest.json"
@@ -432,6 +439,10 @@ def main() -> int:
     for fh in handles:
         fh.close()
 
+    usage = cms_data.prepare(work)
+    problems += usage.problems
+    source_rows += usage.source_rows
+
     if problems:
         print("STOPPED: these files could not be read. Nothing was written.\n")
         for p in problems:
@@ -443,6 +454,7 @@ def main() -> int:
     con = duckdb.connect(str(tmp_db))
     for spec in (PAYMENT, NOC, CROSSWALK):
         create_table(con, spec, work / f"{spec.name}.csv")
+    cms_data.create(con, work)
     con.execute("""
         CREATE TABLE source_files (
             table_name VARCHAR, effective_quarter VARCHAR, source_file VARCHAR,
@@ -486,9 +498,9 @@ def main() -> int:
     work.rmdir()
 
     print(f"Built {DB_PATH.relative_to(ROOT)}")
-    for name, n in counts.items():
-        print(f"  {name:<16} {n:>8,} rows")
-    print(f"  source_files     {len(source_rows):>8,} CSV files")
+    for name, n in {**counts, **usage.counts}.items():
+        print(f"  {name:<26} {n:>10,} rows")
+    print(f"  {'source_files':<26} {len(source_rows):>10,} CSV files")
     if groups_file:
         n_verified = sum(1 for r in group_rows if r[8])
         print(f"  biosimilar_groups {len(group_rows):>7,} rows ({n_verified} verified) from {groups_file}")

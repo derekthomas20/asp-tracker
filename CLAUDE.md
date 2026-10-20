@@ -46,11 +46,18 @@ language and give the exact commands to run.
 ## Folder layout
 
 ```
-raw/                 Original ZIPs downloaded from CMS. Never modified or deleted.
+raw/                 Original files downloaded from CMS. Never modified or deleted.
+  <year>/<quarter>/  ASP pricing ZIPs (scrape.py)
+  data-cms-gov/      Medicare usage CSVs from data.cms.gov (fetch_cms_data.py),
+                     by dataset and period. The ~40 MB Geography and Service
+                     files are stored gzip-compressed (lossless; parse.py
+                     checks the decompressed bytes against the manifest hash)
 data/
   asp.duckdb         DuckDB database built from raw/ (rebuildable from raw/)
   manifest.json      One entry per downloaded file: name, URL, quarter,
                      CMS posted date, download date, SHA-256 hash
+  cms_data_manifest.json  The same for the data.cms.gov files: dataset,
+                     period, URL, date CMS last changed it, SHA-256
   ncr_markets.json   Hand-maintained markets for the NCR calculator page:
                      default doses (with their FDA label source), which
                      packages to use, multi-dose vials, example contract
@@ -85,9 +92,21 @@ requirements.txt     Python dependencies (keep short)
    snapshot in `reference/biosimilar_groups/` only when its contents change.
    The sheet only says which codes belong together; it holds no prices, and
    only rows marked `verified = yes` are published.
+   `scripts/fetch_cms_data.py` reads the data.cms.gov catalog
+   (https://data.cms.gov/data.json) and downloads new or revised CSVs for
+   four usage datasets: Part B Spending by Drug (yearly), Quarterly Part B
+   Spending by Drug, Part B Discarded Drug Units, and Physician & Other
+   Practitioners by Geography and Service (2021 onward). Not downloaded:
+   OPPS Addendum B (behind the AMA license page, like the AMA-gated ASP
+   files) and the discarded-drug refund reports (PDF only).
 2. **Load** (`scripts/`): read each ZIP in `raw/` and insert rows into
    `data/asp.duckdb` with all required fields above. Loading must be
    repeatable: running it twice must not create duplicate rows.
+   `scripts/cms_data.py` (called by `parse.py`) loads the data.cms.gov files
+   into `part_b_spending`, `part_b_spending_quarterly`,
+   `discarded_drug_units` and `physician_geo_service`. Later releases repeat
+   earlier periods (each yearly spending file holds five years), so queries
+   should use `is_latest_release` to count each period once.
 3. **Build** (`scripts/build_site.py`): query the database and generate the
    pages in `public/` from the templates in `site/`. All numbers on the site
    come from these queries.
@@ -117,9 +136,11 @@ pip install -r requirements.txt
 started by hand from the repository's **Actions** tab ("Run workflow"). It:
 
 1. Installs Python and `requirements.txt` on a fresh Linux machine.
-2. Runs `scripts/scrape.py` and `scripts/fetch_groups.py`.
+2. Runs `scripts/scrape.py`, `scripts/fetch_cms_data.py` and
+   `scripts/fetch_groups.py`.
 3. Commits anything new in `raw/`, `data/manifest.json`,
-   `reference/biosimilar_groups/` and `reference/manifest.json` to `main`.
+   `data/cms_data_manifest.json`, `reference/biosimilar_groups/` and
+   `reference/manifest.json` to `main`.
    It stops before committing if any existing file in `raw/` or
    `reference/biosimilar_groups/` would be changed or deleted.
 4. Runs `scripts/parse.py` and `scripts/build_site.py`, then publishes
