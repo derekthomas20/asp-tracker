@@ -70,7 +70,6 @@
 <section class="market" aria-labelledby="market-h">
   <span class="kicker">Medicare Part B usage</span>
   <h2 id="market-h">{{ g.molecule }} market in Medicare</h2>
-  {% if g.in_switch %}<p><a class="more" href="{{ root }}tools/switching-calculator/index.html?market={{ g.slug }}">Model a switch from {{ g.ref.name }} to a biosimilar →</a></p>{% endif %}
   <div class="figures">
     <div class="figure">
       <span class="big">{{ m.latest.spending|short_money }}</span>

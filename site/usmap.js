@@ -26,7 +26,7 @@
     var a = stops[seg], b = stops[seg + 1];
     return "rgb(" + [0, 1, 2].map(function (i) { return Math.round(a[i] + (b[i] - a[i]) * u); }).join(",") + ")";
   }
-  var whole = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+  var whole = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });  // whole units
 
   var MEASURES = {
     services: {
