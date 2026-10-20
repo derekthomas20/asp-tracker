@@ -18,7 +18,7 @@ Codes with 0% coinsurance are not listed: CMS does not note them as inflation-ad
   {% for r in co.rows %}
     <tr>
       <td data-label="Code" class="code"><a href="{{ root }}codes/{{ r.code }}.html">{{ r.code }}</a></td>
-      <td data-label="Drug"><a class="name" href="{{ root }}codes/{{ r.code }}.html">{{ r.description }}</a></td>
+      <td data-label="Drug"><a class="name" href="{{ root }}codes/{{ r.code }}.html">{{ r.name }}</a>{% if r.product %}<span class="cms-desc">{{ r.description }}</span>{% endif %}</td>
       <td data-label="Billing unit" class="muted">{{ r.dosage }}</td>
       <td data-label="Payment limit" class="num">{{ r.limit|money }}</td>
       <td data-label="Coinsurance" class="num strong up">{{ r.co|plain_percent }}</td>

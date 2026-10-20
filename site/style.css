@@ -223,6 +223,10 @@ button:hover, .button:hover { background: var(--color-teal-dark); color: #ffffff
 .mover-list .sub { display: block; font-size: 13px; color: var(--color-text-2); }
 .mover-list .pct { font-size: 20px; font-weight: 600; white-space: nowrap; }
 
+/* CMS short descriptor shown under a product name */
+.cms-desc { display: block; font-size: 13px; color: var(--color-text-2); margin: 0; }
+.drug h1 + .cms-desc { font-size: 15px; margin-top: calc(-1 * var(--space-2)); }
+
 /* Biosimilar group page: Medicare usage */
 .market { margin-top: var(--space-8); padding-top: var(--space-8); border-top: 1px solid var(--color-border); display: grid; gap: var(--space-4); }
 .market > h2 { margin: 0; font-size: 32px; }

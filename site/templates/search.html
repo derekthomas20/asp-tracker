@@ -15,8 +15,8 @@
 
 <ul class="code-list" id="results">
 {% for c in codes %}
-  <li data-search="{{ c.code|lower }} {{ c.description|lower }} {{ c.other_descriptions|join(' ')|lower }}">
-    <a href="{{ root }}codes/{{ c.code }}.html"><span class="code">{{ c.code }}</span> {{ c.description }}</a>
+  <li data-search="{{ c.code|lower }} {{ c.name|lower }} {{ c.description|lower }} {{ c.other_descriptions|join(' ')|lower }}">
+    <a href="{{ root }}codes/{{ c.code }}.html"><span class="code">{{ c.code }}</span> {{ c.name }}{% if c.product %} <span class="muted">· {{ c.description }}</span>{% endif %}</a>
     {% if not c.in_latest %}<span class="tag">not in {{ latest_q|quarter }}</span>{% endif %}
   </li>
 {% endfor %}

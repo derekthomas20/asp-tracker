@@ -510,6 +510,71 @@ def load_geo(con, codes: set[str]) -> tuple[int | None, dict[str, dict[str, Deci
     return year, services, names, files
 
 
+MAX_PRODUCT_NAMES = 2  # more names than this: keep the CMS descriptor instead
+
+
+def clean_brand(text: str | None) -> str:
+    """Spending-file brand text -> a display name: 'KEYTRUDA' -> 'Keytruda',
+    'PROLIA*' -> 'Prolia', 'AMCHOPLAST, PER SQ CM**' -> 'Amchoplast'.
+    The '*' marks in CMS's file mean "more than one product"."""
+    t = (text or "").replace("*", "").strip()
+    t = re.split(r",\s*per\b", t, flags=re.IGNORECASE)[0].strip()
+    return t.title() if t.isupper() else t
+
+
+def load_product_names(con) -> dict[str, str]:
+    """A product name for each code, from CMS files only:
+
+      1. the NDC-HCPCS crosswalk drug names for the newest quarter the code
+         appears in (names differing only in capitals are one name; a name
+         that is another listed name plus more words, such as
+         'Dopamine in D5W' next to 'Dopamine', is dropped). One or two names
+         are shown, joined with ' / ': brand names before the generic name,
+         and the name matching the Part B Spending file's brand first. With
+         more names, the code gets none.
+      2. otherwise the Part B Spending by Drug brand name (newest release),
+         cleaned by clean_brand().
+
+    Codes with no name here are shown by their CMS short descriptor."""
+    brands: dict[str, str] = {}
+    generics: dict[str, str] = {}
+    for code, brand, generic in con.execute("""
+            SELECT hcpcs_code, brand_name, generic_name FROM (
+                SELECT hcpcs_code, brand_name, generic_name, period_year AS y FROM part_b_spending_quarterly WHERE is_latest_release
+                UNION ALL
+                SELECT hcpcs_code, brand_name, generic_name, data_year AS y FROM part_b_spending WHERE is_latest_release)
+            WHERE brand_name <> ''
+            QUALIFY row_number() OVER (PARTITION BY hcpcs_code ORDER BY y DESC) = 1""").fetchall():
+        brands[code] = brand
+        generics[code] = generic
+    crosswalk: dict[str, list[str]] = {}
+    for code, names in con.execute("""
+            SELECT hcpcs_code, list(DISTINCT drug_name ORDER BY drug_name) FROM crosswalks
+            WHERE is_current AND hcpcs_code IS NOT NULL AND trim(coalesce(drug_name, '')) <> ''
+            GROUP BY hcpcs_code, effective_quarter
+            QUALIFY effective_quarter = max(effective_quarter) OVER (PARTITION BY hcpcs_code)""").fetchall():
+        crosswalk[code] = names
+
+    out = {}
+    for code in set(brands) | set(crosswalk):
+        brand = clean_brand(brands.get(code))
+        generic = clean_brand(generics.get(code)).lower()
+        names = {}
+        for n in crosswalk.get(code, []):
+            n = display_text(n)
+            names.setdefault(n.lower(), n if not n.isupper() or len(n) <= 4 else n.title())
+        keys = [k for k in names if not any(k != o and k.startswith(o + " ") for o in names)]
+        if keys:
+            if len(keys) > MAX_PRODUCT_NAMES:
+                continue
+            # Brand names before the generic name; the spending file's brand first.
+            keys.sort(key=lambda k: (k == generic, k != brand.lower(), k))
+            out[code] = " / ".join(names[k] for k in keys)
+        elif brand:
+            out[code] = brand
+    return out
+
+
 def load_discarded(con) -> dict[str, dict]:
     """Newest year of the Discarded Drug Units file, per code:
     {code: {year, allowed, discarded, pct_discarded, source_file}}."""
@@ -952,6 +1017,7 @@ def main() -> int:
     usage, usage_years, usage_ytd = load_usage(con)
     geo = load_geo(con, {r["hcpcs_code"] for r in rows})
     discarded = load_discarded(con)
+    product_names = load_product_names(con)
     con.close()
     if CMS_DATA_MANIFEST.exists():
         with CMS_DATA_MANIFEST.open(encoding="utf-8") as f:
@@ -982,7 +1048,16 @@ def main() -> int:
         raise SystemExit(f"STOPPED: {latest_q} current rows have {len(posted)} posted dates.")
 
     # ---- Comparison with the prior quarter --------------------------------
+    def named(d: dict) -> dict:
+        """Add 'product' (CMS product name, or None) and 'name' (product name,
+        else the CMS short descriptor) to a row that has code and description."""
+        d["product"] = product_names.get(d["code"])
+        d["name"] = d["product"] or d["description"]
+        return d
+
     cmp = compare(latest, prior)
+    for c in cmp["compared"]:
+        named(c)
     compared = cmp["compared"]
     ups = [c for c in compared if c["change"] > 0]
     downs = [c for c in compared if c["change"] < 0]
@@ -1002,8 +1077,8 @@ def main() -> int:
         c["spark"] = Markup(sparkline(recent_limits(c["code"])))
 
     def code_row(r: dict) -> dict:
-        return {"code": r["hcpcs_code"], "description": display_text(r["short_description"]),
-                "dosage": r["hcpcs_dosage"], "limit": r["payment_limit"]}
+        return named({"code": r["hcpcs_code"], "description": display_text(r["short_description"]),
+                      "dosage": r["hcpcs_dosage"], "limit": r["payment_limit"]})
 
     # ---- Reduced coinsurance ----------------------------------------------
     # "Usual" coinsurance is the percentage most codes in this quarter's file
@@ -1081,6 +1156,8 @@ def main() -> int:
                  "rows": [{"code": code, "spending": r["spending"], "claims": r["claims"],
                            "description": display_text(newest_desc.get(code))}
                           for code, r in top_drugs]} if top_year else None
+    for r in (top_drugs or {}).get("rows", []):
+        named(r)
 
     new_codes = [code_row(latest[c]) for c in sorted(latest.keys() - prior.keys())]
     dropped_codes = [code_row(prior[c]) for c in sorted(prior.keys() - latest.keys())]
@@ -1161,6 +1238,8 @@ def main() -> int:
         code_pages.append({
             "code": code,
             "description": display_text(newest["short_description"]),
+            "product": product_names.get(code),
+            "name": product_names.get(code) or display_text(newest["short_description"]),
             "other_descriptions": sorted({h["description"] for h in history} - {display_text(newest["short_description"])}),
             "dosage": newest["hcpcs_dosage"],
             "newest": newest,
@@ -1216,8 +1295,9 @@ def main() -> int:
 
     # The header search box suggests codes as you type. Its list is written as
     # a script (not JSON) so it also works when a page is opened from disk.
-    index = [[p["code"], p["description"], money(p["newest"]["payment_limit"]),
-              " ".join(p["other_descriptions"] + sorted({x["drug_name"] or "" for x in p["products"]}))]
+    index = [[p["code"], p["name"], money(p["newest"]["payment_limit"]),
+              " ".join([p["description"]] + p["other_descriptions"]
+                       + sorted({x["drug_name"] or "" for x in p["products"]}))]
              for p in code_pages]
     (OUT / "search-index.js").write_text(
         "window.SEARCH_INDEX = " + json.dumps(index, ensure_ascii=False, separators=(",", ":")) + ";\n",

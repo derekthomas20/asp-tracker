@@ -5,7 +5,7 @@
 <ul class="mover-list">
   {% for m in rows %}
   <li><a href="{{ root }}codes/{{ m.code }}.html">
-    <span><span class="name">{{ m.description }}</span><span class="sub">{{ m.code }} · {{ m.latest|money }} per {{ m.dosage }}</span></span>
+    <span><span class="name">{{ m.name }}</span><span class="sub">{{ m.code }}{% if m.product %} · {{ m.description }}{% endif %} · {{ m.latest|money }} per {{ m.dosage }}</span></span>
     <span class="pct {{ 'up' if m.change > 0 else 'down' }}">{{ m.pct|arrow_percent }}</span>
   </a></li>
   {% endfor %}
@@ -21,7 +21,7 @@
       <span class="plate plate-c" aria-hidden="true">{{ lead.pct|percent }}</span>
       <span class="plate plate-m" aria-hidden="true">{{ lead.pct|percent }}</span>
     </div>
-    <h1>{{ lead.description }} payment limit rises {{ lead.pct|percent|replace("+", "") }}</h1>
+    <h1>{{ lead.name }} payment limit rises {{ lead.pct|percent|replace("+", "") }}</h1>
     <p class="dek">Medicare’s limit for {{ lead.code }} moves from {{ lead.prior|money }} to {{ lead.latest|money }} per {{ lead.dosage }},
     the largest percent increase among the {{ s.compared|num }} codes compared with {{ s.prior_q|quarter }}.</p>
     <div class="lead-chart"><canvas id="lead-chart" role="img" aria-label="Line chart of the {{ lead.code }} payment limit for the last {{ lead.chart_labels|length }} quarters."></canvas></div>
@@ -65,7 +65,7 @@
   <ol class="co-list rank-list">
     {% for r in top_drugs.rows %}
     <li><a href="{{ root }}codes/{{ r.code }}.html">
-      <span><span class="name">{{ r.description or r.code }}</span><span class="sub">{{ r.code }} · {{ r.claims|count }} claims</span></span>
+      <span><span class="name">{{ r.name or r.code }}</span><span class="sub">{{ r.code }}{% if r.product and r.description %} · {{ r.description }}{% endif %} · {{ r.claims|count }} claims</span></span>
       <span class="pct">{{ r.spending|short_money }}</span>
     </a></li>
     {% endfor %}
@@ -86,7 +86,7 @@
   <ul class="co-list">
     {% for r in co.top %}
     <li><a href="{{ root }}codes/{{ r.code }}.html">
-      <span><span class="name">{{ r.description }}</span><span class="sub">{{ r.code }} · per {{ r.dosage }}</span></span>
+      <span><span class="name">{{ r.name }}</span><span class="sub">{{ r.code }}{% if r.product %} · {{ r.description }}{% endif %} · per {{ r.dosage }}</span></span>
       <span class="pct up">{{ r.co|plain_percent }}</span>
       <span class="sub">{% if r.saves is not none %}patient pays {{ r.saves|cents }} less per unit{% else %}no payment limit given{% endif %}</span>
     </a></li>

@@ -1,12 +1,13 @@
 {% extends "base.html" %}
-{% block title %}{{ p.code }} {{ p.description }}{% endblock %}
+{% block title %}{{ p.code }} {{ p.name }}{% endblock %}
 {% block content %}
 {% macro change_value(pct) %}{% if pct is none %}<span class="value muted">N/A</span>{% else %}<span class="value {{ 'up' if pct > 0 else 'down' if pct < 0 else '' }}">{{ pct|arrow_percent }}</span>{% endif %}{% endmacro %}
 
 <div class="drug">
   <article>
     <span class="kicker cyan">HCPCS {{ p.code }} · per {{ p.dosage }}</span>
-    <h1>{{ p.description }}</h1>
+    <h1>{{ p.name }}</h1>
+    {% if p.product %}<p class="cms-desc">CMS description: {{ p.description }}</p>{% endif %}
     {% if p.products %}
     <p class="dek">Products billed under this code include {{ p.products|map(attribute="drug_name")|reject("none")|unique|list|join(", ") }}.</p>
     {% endif %}
