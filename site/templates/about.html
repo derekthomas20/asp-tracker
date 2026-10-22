@@ -26,6 +26,15 @@ So a change in a payment limit shows up months after the change in prices that c
 <p>Rxcurve is not affiliated with, endorsed by, or connected to CMS or any other government agency. Check the
 <a href="{{ source_page }}">CMS files</a> before relying on any figure.</p>
 
+{% if site.show_owner %}
+<h2>Who runs Rxcurve</h2>
+<p>Rxcurve is run by {{ site.owner_name }}. {{ site.owner_bio }}</p>
+<p>Rxcurve carries no advertising and no sponsored content. Corrections are welcome: if a figure here doesn’t match the CMS file it came from, please say so.</p>
+
+<h2 id="contact">Contact</h2>
+<p>Email <a href="mailto:{{ site.contact_email }}">{{ site.contact_email }}</a>. For a figure, include the HCPCS code and quarter so it can be checked against the CMS file.</p>
+{% endif %}
+
 <h2>Updates</h2>
 <p>Most recent file downloaded from CMS: {{ last_download|long_date }}.<br>
 Rxcurve was last built on {{ built|long_date }}.</p>

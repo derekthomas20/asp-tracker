@@ -81,6 +81,7 @@ CHART_SCRIPT = ROOT / "site" / "charts.js"
 NCR_SCRIPT = ROOT / "site" / "ncr.js"
 MAP_SCRIPT = ROOT / "site" / "usmap.js"  # state map on the biosimilar group pages
 NCR_MARKETS = ROOT / "data" / "ncr_markets.json"  # hand-maintained doses; holds no prices
+SITE_INFO = ROOT / "data" / "site.json"  # hand-maintained: who runs the site, contact, sign-up
 NCR_PAGE = "tools/ncr-calculator/index.html"
 STATIC = ROOT / "site" / "static"  # logo and favicons
 OUT = ROOT / "public"
@@ -1365,6 +1366,28 @@ def write_sitemap(pages: list[tuple[str, date | None]]) -> None:
                                     encoding="utf-8")
 
 
+def load_site_info(warn) -> dict:
+    """data/site.json: who runs the site and the Buttondown sign-up. Blank
+    fields leave their part of the site off (and are reported); a value in
+    the wrong form stops the build, since it goes into links."""
+    with SITE_INFO.open(encoding="utf-8") as f:
+        info = {k: v.strip() for k, v in json.load(f).items() if not k.startswith("_")}
+    where = SITE_INFO.relative_to(ROOT)
+    user = info["buttondown_username"]
+    if user and not re.fullmatch(r"[A-Za-z0-9_-]+", user):
+        raise SystemExit(f"STOPPED: {where}: buttondown_username {user!r} should be just the username.")
+    email = info["contact_email"]
+    if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise SystemExit(f"STOPPED: {where}: contact_email {email!r} is not an email address.")
+    if not user:
+        warn(f"{where}: no buttondown_username, so the email sign-up form is shown switched off.")
+    blank = [k for k in ("owner_name", "owner_bio", "contact_email") if not info[k]]
+    if blank:
+        warn(f"{where}: {', '.join(blank)} not filled in, so the About page has no 'Who runs Rxcurve' section.")
+    info["show_owner"] = not blank
+    return info
+
+
 # --------------------------------------------------------------------------
 # Writing the site
 # --------------------------------------------------------------------------
@@ -1766,6 +1789,7 @@ def main() -> int:
         "n_codes_all": len(code_pages),
         "rebate_page": REBATE_PAGE,
         "jw_faq": JW_FAQ,
+        "site": load_site_info(warnings.append),
         "ncr_page": NCR_PAGE,
     }
 

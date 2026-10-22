@@ -515,6 +515,27 @@ tr.superseded td { color: var(--color-text-2); }
   .ncr-lead-val { font-size: 28px; }
 }
 
+/* ── Email sign-up (above the footer on every page) ───────────────────── */
+
+.signup { margin-top: 64px; }
+.signup .wrap {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 26rem); gap: var(--space-3) var(--space-8);
+  align-items: end; border-top: 3px solid var(--color-navy); padding-top: var(--space-4);
+}
+.signup h2 { margin: 0 0 var(--space-1); font-size: 22px; }
+.signup-text p { margin: 0; color: var(--color-text-2); max-width: 36rem; }
+.signup input[type="email"] {
+  flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 8px 10px; min-height: 36px;
+  color: var(--color-text); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+}
+.signup input[type="email"]:focus-visible { border-color: var(--color-teal); outline-offset: 0; }
+.signup input:disabled, .signup button:disabled { opacity: 0.55; cursor: not-allowed; }
+.signup button:disabled:hover { background: var(--color-teal); }
+.signup-note { font-size: 13px; color: var(--color-text-2); margin: var(--space-1) 0 0; }
+.signup + .site-footer { margin-top: var(--space-6); }
+@media (max-width: 820px) { .signup .wrap { grid-template-columns: minmax(0, 1fr); } }
+
 /* ── Footer ───────────────────────────────────────────────────────────── */
 
 .site-footer { margin-top: 64px; }
