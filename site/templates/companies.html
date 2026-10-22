@@ -3,7 +3,8 @@
 {% block content %}
 <span class="kicker">Companies · {{ latest_q|quarter }}</span>
 <h1>Who makes the drugs</h1>
-<p class="dek">The {{ companies|length|num }} companies behind the codes in the {{ latest_q|quarter }} file, with Medicare Part B spending on the drugs only they make.</p>
+<p class="dek">The {{ companies|length|num }} companies behind the codes in the {{ latest_q|quarter }} file, with Medicare Part B spending on the drugs only they make.
+Companies whose drugs are mostly shared with other makers are <a href="#mostly-shared">listed separately</a>.</p>
 
 <div class="figures" style="padding-top:var(--space-4)">
   <div class="figure"><span class="big">{{ cs.n_own|num }}</span><span class="label">codes made by one company</span></div>
@@ -23,8 +24,23 @@ with bigger-selling drugs counting more. Open a company for a plain-language sum
     <option value="yes">Publicly traded</option><option value="no">Not publicly traded</option></select></label>
   <p class="note" id="f-count" aria-live="polite"></p>
 </div>
+{% macro company_cells(c, mostly_shared) %}
+    {% set t = c.brief.price_trend %}
+      <td data-label="Company" data-sort="{{ c.name }}"><a class="name" href="{{ root }}companies/{{ c.id }}.html">{{ c.name }}</a></td>
+      <td data-label="Tickers" class="muted" data-sort="{{ c.tickers|map(attribute='ticker')|join(' ') }}">{{ tickers(c.tickers) }}</td>
+      <td data-label="{{ 'Own codes' if mostly_shared else 'Medicare spending' }}" class="num{{ '' if mostly_shared else ' strong' }}" data-sort="{{ c.spending if c.spending is not none else '' }}">{{ c.spending|short_money if c.spending is not none else "–" }}</td>
+      {% if mostly_shared %}
+      <td data-label="Shared codes, all makers" class="num strong" data-sort="{{ c.shared_spending }}">{{ c.shared_spending|short_money }}</td>
+      {% elif cs.prev_year %}
+      <td data-label="vs. {{ cs.prev_year }}" data-sort="{{ c.spending_change if c.spending_change is not none else '' }}" class="num {% if c.spending_change %}{{ 'up' if c.spending_change > 0 else 'down' }}{% endif %}">{{ c.spending_change|arrow_percent if c.spending_change is not none else "–" }}</td>
+      {% endif %}
+      <td data-label="Price change, {{ latest_q|quarter }}" data-sort="{{ t if t is not none else '' }}" class="num {% if t %}{{ 'up' if t > 0 else 'down' }}{% endif %}">{{ t|arrow_percent if t is not none else "–" }}</td>
+      <td data-label="Drugs" class="num" data-sort="{{ c.own|length + c.shared|length }}">{{ c.own|length|num }}{% if c.shared %} <span class="muted">+ {{ c.shared|length }} shared</span>{% endif %}</td>
+{% endmacro %}
+{% set main = companies|rejectattr("mostly_shared")|list %}
+{% set mostly = companies|selectattr("mostly_shared")|sort(attribute="shared_spending", reverse=true)|list %}
 <div class="table-wrap">
-<table class="stack sortable" id="companies">
+<table class="stack sortable">
   <thead><tr>
     <th data-sort="text">Company</th><th data-sort="text">Tickers</th>
     <th class="num" data-sort="num" aria-sort="descending">Medicare spending, {{ cs.year }}{% if cs.preliminary %} (prelim.){% endif %}</th>
@@ -33,28 +49,45 @@ with bigger-selling drugs counting more. Open a company for a plain-language sum
     <th class="num" data-sort="num">Drugs</th>
   </tr></thead>
   <tbody>
-  {% for c in companies %}
-    {% set t = c.brief.price_trend %}
-    <tr data-exchanges="{{ c.tickers|map(attribute='exchange')|join('|') }}">
-      <td data-label="Company" data-sort="{{ c.name }}"><a class="name" href="{{ root }}companies/{{ c.id }}.html">{{ c.name }}</a></td>
-      <td data-label="Tickers" class="muted" data-sort="{{ c.tickers|map(attribute='ticker')|join(' ') }}">{{ tickers(c.tickers) }}</td>
-      <td data-label="Medicare spending" class="num strong" data-sort="{{ c.spending if c.spending is not none else '' }}">{{ c.spending|short_money if c.spending is not none else "–" }}</td>
-      {% if cs.prev_year %}<td data-label="vs. {{ cs.prev_year }}" data-sort="{{ c.spending_change if c.spending_change is not none else '' }}" class="num {% if c.spending_change %}{{ 'up' if c.spending_change > 0 else 'down' }}{% endif %}">{{ c.spending_change|arrow_percent if c.spending_change is not none else "–" }}</td>{% endif %}
-      <td data-label="Price change, {{ latest_q|quarter }}" data-sort="{{ t if t is not none else '' }}" class="num {% if t %}{{ 'up' if t > 0 else 'down' }}{% endif %}">{{ t|arrow_percent if t is not none else "–" }}</td>
-      <td data-label="Drugs" class="num" data-sort="{{ c.own|length + c.shared|length }}">{{ c.own|length|num }}{% if c.shared %} <span class="muted">+ {{ c.shared|length }} shared</span>{% endif %}</td>
-    </tr>
+  {% for c in main %}
+    <tr data-exchanges="{{ c.tickers|map(attribute='exchange')|join('|') }}">{{ company_cells(c, false) }}</tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
+{% if cs.prev_year %}<p class="note">“vs. {{ cs.prev_year }}” compares the same drugs in both years. It is left blank when drugs with spending in both years are less than {{ min_change_coverage }}% of the company’s {{ cs.year }} spending, for example when its biggest drug is new.</p>{% endif %}
+
+{% if mostly %}
+<h2 id="mostly-shared">Mostly shared with other makers</h2>
+<p class="note">For these {{ mostly|length }} companies, most Medicare spending on their drugs is on codes other companies also make, often generic or multi-source drugs.
+CMS reports spending per code, not per company, so that spending can’t be split between makers, and the spending on their own codes is the smaller part of the Medicare spending on their drugs.
+These companies are not comparable with those above. “Shared codes” is Medicare spending on every code the company shares, all makers together; the same code is counted for each of its makers.</p>
+<div class="table-wrap">
+<table class="stack sortable">
+  <thead><tr>
+    <th data-sort="text">Company</th><th data-sort="text">Tickers</th>
+    <th class="num" data-sort="num">Own codes, {{ cs.year }}{% if cs.preliminary %} (prelim.){% endif %}</th>
+    <th class="num" data-sort="num" aria-sort="descending">Shared codes, all makers</th>
+    <th class="num" data-sort="num">Price change, {{ latest_q|quarter }}</th>
+    <th class="num" data-sort="num">Drugs</th>
+  </tr></thead>
+  <tbody>
+  {% for c in mostly %}
+    <tr data-exchanges="{{ c.tickers|map(attribute='exchange')|join('|') }}">{{ company_cells(c, true) }}</tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
 {% include "company_method.html" %}
 {% endblock %}
 {% block scripts %}
 <script>
-// Companies table: filter by exchange and by publicly traded or not, and
+// Companies tables: filter by exchange and by publicly traded or not, and
 // sort by any column (click again to reverse). Blank values sort last.
 (function () {
-  var table = document.getElementById("companies"), rows = [].slice.call(table.tBodies[0].rows);
+  var tables = [].slice.call(document.querySelectorAll("table.sortable"));
+  var rows = [].concat.apply([], tables.map(function (t) { return [].slice.call(t.tBodies[0].rows); }));
   var exchange = document.getElementById("f-exchange"), listed = document.getElementById("f-listed");
   var shown = document.getElementById("f-count");
   document.getElementById("company-filters").hidden = false;
@@ -73,6 +106,10 @@ with bigger-selling drugs counting more. Open a company for a plain-language sum
   exchange.addEventListener("change", filter);
   listed.addEventListener("change", filter);
 
+  tables.forEach(function (table) { sortable(table); });
+
+  function sortable(table) {
+  var body = table.tBodies[0];
   var heads = [].slice.call(table.tHead.rows[0].cells);
   heads.forEach(function (th, col) {
     if (!th.dataset.sort) return;
@@ -94,14 +131,14 @@ with bigger-selling drugs counting more. Open a company for a plain-language sum
         var v = tr.cells[col].dataset.sort;
         return numeric ? (v === "" ? null : parseFloat(v)) : (v === "" ? null : v.toLowerCase());
       }
-      rows.sort(function (a, b) {
+      [].slice.call(body.rows).sort(function (a, b) {
         var x = key(a), y = key(b);
         if (x === null || y === null) return (x === null) - (y === null);
         return (x < y ? -1 : x > y ? 1 : 0) * sign;
-      });
-      rows.forEach(function (tr) { table.tBodies[0].appendChild(tr); });
+      }).forEach(function (tr) { body.appendChild(tr); });
     });
   });
+  }
 })();
 </script>
 {% endblock %}

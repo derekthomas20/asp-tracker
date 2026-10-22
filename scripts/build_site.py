@@ -931,6 +931,9 @@ def load_makers(con, quarter: str, warn) -> dict | None:
 
 
 BRIEF_NAMES = 3  # drugs named in the "What this means" biosimilar sentence
+# A company's spending change vs. the year before is shown only when the codes
+# with spending in both years make up at least this percent of this year's.
+MIN_CHANGE_COVERAGE = Decimal(50)
 
 
 def company_brief(own: list[dict], total: Decimal | None, total_part_b: Decimal | None,
@@ -1011,10 +1014,22 @@ def build_companies(mk: dict, latest: dict, code_pages: list[dict], usage, usage
         both = [r for r in own if r["spending"] is not None and r["spending_prev"] is not None]
         prev_total = sum(r["spending_prev"] for r in both) if both else None
         cur_same = sum(r["spending"] for r in both) if both else None
+        # The change is shown only when the codes in both years are most of this
+        # year's spending: otherwise a few small codes would speak for the
+        # company (Baxter's biggest code is new, so its change covered <1%).
+        coverage = share(cur_same, total) if both else None
+        change = (share(cur_same - prev_total, prev_total)
+                  if coverage is not None and coverage >= MIN_CHANGE_COVERAGE else None)
+        # Spending on the codes it shares, all makers together: CMS reports
+        # spending per code, not per company, so it is never split.
+        shared_spend = [r["spending"] for r in shared if r["spending"] is not None]
+        shared_total = sum(shared_spend) if shared_spend else None
         listed = own + shared
         out.append({
             **c, "own": own, "shared": shared,
-            "spending": total, "spending_change": share(cur_same - prev_total, prev_total) if both else None,
+            "spending": total, "spending_change": change, "change_coverage": coverage,
+            "shared_spending": shared_total,
+            "mostly_shared": shared_total is not None and shared_total > (total or 0),
             "brief": company_brief(own, total, total_part_b, effect_by_code),
             "n_up": sum(1 for r in listed if r["qoq"] is not None and r["qoq"] > 0),
             "n_down": sum(1 for r in listed if r["qoq"] is not None and r["qoq"] < 0),
@@ -1334,6 +1349,10 @@ def company_seo(c: dict, cs: dict, q: str) -> dict:
     if c["spending"] is not None:
         description += (f", and {big_money(c['spending'])} in Medicare Part B spending in {cs['year']}"
                         f"{' (preliminary)' if cs['preliminary'] else ''} on drugs only {c['name']} makes")
+    if c["mostly_shared"]:
+        description += (f". {'Most Medicare spending on its drugs is on codes' if c['own'] else 'All its codes are'} "
+                        f"shared with other makers: {big_money(c['shared_spending'])} in {cs['year']}, "
+                        "all makers together")
     trend = c["brief"]["price_trend"]
     if trend is not None:
         description += f". Payment limits {percent(trend)} this quarter, weighted by spending"
@@ -1789,6 +1808,7 @@ def main() -> int:
         "n_codes_all": len(code_pages),
         "rebate_page": REBATE_PAGE,
         "jw_faq": JW_FAQ,
+        "min_change_coverage": MIN_CHANGE_COVERAGE,
         "site": load_site_info(warnings.append),
         "ncr_page": NCR_PAGE,
     }

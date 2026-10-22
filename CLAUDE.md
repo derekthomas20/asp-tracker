@@ -145,7 +145,9 @@ requirements.txt     Python dependencies (keep short)
    `data/ncr_markets.json`. Company pages (`companies.html`,
    `companies/<id>.html`) use only verified labeler codes; Medicare
    spending is added up only for codes every crosswalk product of which is
-   credited to that one company.
+   credited to that one company. Shared-code spending is never split between
+   makers; a company whose shared codes have more spending (all makers
+   together) than its own codes is listed separately as "mostly shared".
 
 ## Working conventions
 

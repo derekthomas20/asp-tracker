@@ -11,12 +11,18 @@
 
 {% set b = c.brief %}
 {% macro moved(pct) %}{{ "rose" if pct > 0 else "fell" if pct < 0 else "did not change" }}{% if pct %} <strong>{{ pct|abs|share }}</strong>{% endif %}{% endmacro %}
-{% if c.spending is not none or b.price_trend is not none %}
+{% if c.spending is not none or b.price_trend is not none or c.mostly_shared %}
 <section class="brief" aria-labelledby="brief-h">
   <h2 id="brief-h">What this means for {{ c.name }}</h2>
   <ul>
+    {% if c.mostly_shared %}
+    <li><span class="brief-k">Mostly shared codes.</span> Most Medicare spending on {{ c.name }}’s drugs is on codes other companies also make:
+    <strong>{{ c.shared_spending|big_money }}</strong> in {{ cs.year }}{% if cs.preliminary %} (preliminary){% endif %} on its {{ c.shared|length|num }} shared code{{ "s" if c.shared|length != 1 }}, all makers together.
+    CMS reports spending per code, not per company, so that can’t be split{% if c.own %}, and the figures below cover only the {{ c.own|length|num }} code{{ "s" if c.own|length != 1 }} only {{ c.name }} makes.
+    They are not comparable with companies that make most of their drugs alone{% else %}. {{ c.name }} makes no code alone, so no spending is counted for it{% endif %}.</li>
+    {% endif %}
     {% if c.spending is not none %}
-    <li><span class="brief-k">Size.</span> Medicare Part B paid <strong>{{ c.spending|big_money }}</strong> in {{ cs.year }}{% if cs.preliminary %} (preliminary){% endif %} for drugs only {{ c.name }} makes{% if b.share_of_part_b is not none %}, <strong>{{ b.share_of_part_b|share }}</strong> of all Part B drug spending{% endif %}.</li>
+    <li><span class="brief-k">Size.</span> Medicare Part B paid <strong>{{ c.spending|big_money }}</strong> in {{ cs.year }}{% if cs.preliminary %} (preliminary){% endif %} for drugs only {{ c.name }} makes{% if b.share_of_part_b is not none and b.share_of_part_b >= 0.05 %}, <strong>{{ b.share_of_part_b|share }}</strong> of all Part B drug spending{% endif %}.</li>
     {% endif %}
     {% if b.price_trend is not none %}
     <li><span class="brief-k">Prices this quarter.</span> Weighted by how much Medicare spends on each drug, {{ c.name }}’s payment limits {{ moved(b.price_trend) }} from {{ cs.prior_q|quarter }} to {{ latest_q|quarter }} ({{ b.n_up }} drug{{ "s" if b.n_up != 1 }} up, {{ b.n_down }} down).</li>
@@ -66,11 +72,12 @@
 
 {% if c.shared %}
 <h2>Codes shared with other makers</h2>
-<p class="note">Other companies or labelers also have products under these codes, so their spending is not counted for {{ c.name }}.</p>
+<p class="note">Other companies or labelers also have products under these codes, so their spending is not counted for {{ c.name }}.
+“Spending” is Medicare’s total for the code, all makers together.</p>
 <div class="table-wrap">
 <table class="stack">
   <thead><tr><th>Code</th><th>Drug</th><th>Billing unit</th><th class="num">{{ latest_q|quarter }} limit</th>
-    <th class="num">vs. last quarter</th><th>Also made by</th></tr></thead>
+    <th class="num">vs. last quarter</th><th class="num">Spending, {{ cs.year }}</th><th>Also made by</th></tr></thead>
   <tbody>
   {% for r in c.shared %}
     <tr>
@@ -79,6 +86,7 @@
       <td data-label="Billing unit" class="muted">{{ r.dosage }}</td>
       <td data-label="{{ latest_q|quarter }} limit" class="num strong">{{ r.limit|money }}</td>
       {{ change_cell(r.qoq, "vs. last quarter") }}
+      <td data-label="Spending, {{ cs.year }}, all makers" class="num">{{ r.spending|short_money if r.spending is not none else "–" }}</td>
       <td data-label="Also made by">{{ r.others|join(", ") }}{% if r.others and r.n_unknown %}, {% endif %}{% if r.n_unknown %}<span class="muted">{{ r.n_unknown }} other labeler{{ "s" if r.n_unknown > 1 }}</span>{% endif %}</td>
     </tr>
   {% endfor %}
