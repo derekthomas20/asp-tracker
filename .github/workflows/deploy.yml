@@ -5,13 +5,15 @@
 
 name: Deploy site
 
-# When to run: every push to the main branch.
+# When to run: every push to the main branch, and whenever you press
+# "Run workflow" on the Actions tab (for example if a push did not start it).
 # (Commits that update-site.yml pushes to main do not start this workflow,
 # because GitHub never lets one workflow's own pushes start another workflow.
 # That workflow publishes the site itself.)
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 # What this workflow is allowed to do. It only reads the repository; it never
 # commits. The other two permissions are what the official Pages actions need.
