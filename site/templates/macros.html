@@ -18,7 +18,8 @@
 {% endmacro %}
 
 {# Movers table in the design's ledger style.
-   rows: code, name, product, description, dosage, prior, latest, change, pct, spark
+   rows: code, name, product, description, dosage, prior, latest, change, pct, spark,
+   maker (the company that alone makes the code, or none)
    rank_by: "pct" or "dollars" - which change the bar is drawn from #}
 {% macro movers_table(rows, s, root, rank_by, spark_quarters, effect_year=none) %}
 {% set max_change = rows|map(attribute="change")|map("abs")|max %}
@@ -39,7 +40,7 @@
     {% if rank_by == "pct" %}{% set bar = [r.pct|abs * 3, 100]|min %}{% elif rank_by == "effect" %}{% set bar = r.effect|abs / max_effect * 100 %}{% else %}{% set bar = r.change|abs / max_change * 100 %}{% endif %}
     <tr>
       <td data-label="Code" class="code"><a href="{{ root }}codes/{{ r.code }}.html">{{ r.code }}</a></td>
-      <td data-label="Drug"><a class="name" href="{{ root }}codes/{{ r.code }}.html">{{ r.name }}</a>{% if r.product %}<span class="cms-desc">{{ r.description }}</span>{% endif %}</td>
+      <td data-label="Drug"><a class="name" href="{{ root }}codes/{{ r.code }}.html">{{ r.name }}</a>{% if r.product %}<span class="cms-desc">{{ r.description }}</span>{% endif %}{% if r.maker %}<a class="maker" href="{{ root }}companies/{{ r.maker.id }}.html">{{ r.maker.name }}</a>{% endif %}</td>
       <td data-label="Billing unit" class="muted">{{ r.dosage }}</td>
       <td data-label="{{ s.prior_q|quarter }}" class="num muted">{{ r.prior|money }}</td>
       <td data-label="{{ s.latest_q|quarter }}" class="num strong">{{ r.latest|money }}</td>
@@ -55,3 +56,6 @@
 </table>
 </div>
 {% endmacro %}
+
+{# A company's stock tickers: "ROG · SIX Swiss Exchange, RHHBY · OTC" #}
+{% macro tickers(items) %}{% for t in items %}<span class="ticker">{{ t.ticker }}</span> <span class="muted">{{ t.exchange }}</span>{{ ", " if not loop.last }}{% else %}<span class="muted">Not listed</span>{% endfor %}{% endmacro %}

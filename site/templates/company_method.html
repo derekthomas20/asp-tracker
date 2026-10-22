@@ -1,0 +1,13 @@
+{# How companies are matched to codes; shown on the company list and every company page. #}
+<h2>How companies are matched</h2>
+<p class="note">Each product in the {{ latest_q|quarter }} CMS NDC–HCPCS crosswalk lists the company named on its NDC (the labeler).
+Rxcurve matches labelers to companies with its own list of companies, which is checked every week against the FDA NDC Directory, the GLEIF register of company ownership and SEC’s ticker list;
+a labeler is used only after one of those checks, or the site owner, confirms it.
+Products from distributors and repackagers are not counted. A code is a company’s own when every product under it is from that company.
+Codes with products from other companies, or from labelers not yet matched, are listed as shared, and their spending is not counted for anyone.
+Skin substitutes are left out.</p>
+<p class="note">Spending is Medicare Part B fee-for-service spending on the company’s own codes, as CMS reports it (data.cms.gov Part B Spending by Drug).
+It is not company revenue: it leaves out Medicare Advantage, other payers, discounts and rebates.
+Payment limits are generally 106% of the Average Sales Price manufacturers report, from sales about two quarters earlier.
+The comparison with the year before uses only codes with spending in both years.
+{% if cs.preliminary %}{{ cs.year }} is preliminary: it comes from CMS’s quarterly spending file, while earlier years come from the yearly file, and CMS may count spending slightly differently in the two.{% endif %}</p>

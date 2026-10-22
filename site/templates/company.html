@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "macros.html" import tickers %}
+{% block title %}{{ c.name }}{% endblock %}
+{% block content %}
+{% macro change_cell(pct, label) %}<td data-label="{{ label }}" class="num {% if pct %}{{ 'up' if pct > 0 else 'down' }}{% endif %}">{{ pct|arrow_percent if pct is not none else "–" }}</td>{% endmacro %}
+{% macro drug_cell(r) %}<td data-label="Drug"><a class="name" href="{{ root }}codes/{{ r.code }}.html">{{ r.name }}</a>{% if r.product %}<span class="cms-desc">{{ r.description }}</span>{% endif %}</td>{% endmacro %}
+
+<span class="kicker">Company · {{ tickers(c.tickers) }}</span>
+<h1>{{ c.name }}</h1>
+<p class="dek">{{ (c.own|length + c.shared|length)|num }} code{{ "s" if c.own|length + c.shared|length != 1 }} in the {{ latest_q|quarter }} file:
+{{ c.own|length|num }} made only by {{ c.name }}{% if c.shared %}, {{ c.shared|length|num }} shared with other makers{% endif %}.</p>
+
+{% set b = c.brief %}
+{% macro moved(pct) %}{{ "rose" if pct > 0 else "fell" if pct < 0 else "did not change" }}{% if pct %} <strong>{{ pct|abs|share }}</strong>{% endif %}{% endmacro %}
+{% if c.spending is not none or b.price_trend is not none %}
+<section class="brief" aria-labelledby="brief-h">
+  <h2 id="brief-h">What this means for {{ c.name }}</h2>
+  <ul>
+    {% if c.spending is not none %}
+    <li><span class="brief-k">Size.</span> Medicare Part B paid <strong>{{ c.spending|big_money }}</strong> in {{ cs.year }}{% if cs.preliminary %} (preliminary){% endif %} for drugs only {{ c.name }} makes{% if b.share_of_part_b is not none %}, <strong>{{ b.share_of_part_b|share }}</strong> of all Part B drug spending{% endif %}.</li>
+    {% endif %}
+    {% if b.price_trend is not none %}
+    <li><span class="brief-k">Prices this quarter.</span> Weighted by how much Medicare spends on each drug, {{ c.name }}’s payment limits {{ moved(b.price_trend) }} from {{ cs.prior_q|quarter }} to {{ latest_q|quarter }} ({{ b.n_up }} drug{{ "s" if b.n_up != 1 }} up, {{ b.n_down }} down).</li>
+    {% endif %}
+    {% if b.effect %}
+    <li><span class="brief-k">In dollars.</span> At {{ cs.effect_year }} Medicare use, this quarter’s changes {{ "raise" if b.effect > 0 else "lower" }} Medicare payments for its drugs by about <strong>{{ b.effect|abs|short_money }} a year</strong>{% if b.n_effect < c.own|length %} (for the {{ b.n_effect }} of its {{ c.own|length }} drugs with usage data){% endif %}.</li>
+    {% endif %}
+    {% if b.top %}
+    <li><span class="brief-k">Biggest drug.</span> <a href="{{ root }}codes/{{ b.top.row.code }}.html">{{ b.top.row.name }}</a> is <strong>{{ b.top.share|share }}</strong> of that spending.</li>
+    {% endif %}
+    {% if b.biosimilar %}
+    <li><span class="brief-k">Biosimilar competition.</span> <strong>{{ b.biosimilar.spending|big_money }}</strong> ({{ b.biosimilar.share|share }}) is for drugs that now have biosimilar rivals: {{ b.biosimilar.names|join(", ") }}{% if b.biosimilar.n > b.biosimilar.names|length %} and {{ b.biosimilar.n - b.biosimilar.names|length }} more{% endif %}.</li>
+    {% endif %}
+    {% if c.spending_change is not none %}
+    <li><span class="brief-k">Growth.</span> Medicare spending on the same drugs {{ moved(c.spending_change) }} from {{ cs.prev_year }} to {{ cs.year }}.</li>
+    {% endif %}
+  </ul>
+  <p class="brief-note">Medicare Part B is one part of a company’s US sales, and these are Medicare payments, not company revenue.
+  Payment limits follow sales from about two quarters earlier, so they show price changes after they happen. This is information, not investment advice.</p>
+</section>
+{% endif %}
+
+{% if c.own %}
+<h2>Codes only {{ c.name }} makes</h2>
+<div class="table-wrap">
+<table class="stack">
+  <thead><tr><th>Code</th><th>Drug</th><th>Billing unit</th><th class="num">{{ latest_q|quarter }} limit</th>
+    <th class="num">vs. last quarter</th><th class="num">vs. a year ago</th><th>{{ spark_quarters }} quarters</th>
+    <th class="num">Spending, {{ cs.year }}</th></tr></thead>
+  <tbody>
+  {% for r in c.own %}
+    <tr>
+      <td data-label="Code" class="code"><a href="{{ root }}codes/{{ r.code }}.html">{{ r.code }}</a></td>
+      {{ drug_cell(r) }}
+      <td data-label="Billing unit" class="muted">{{ r.dosage }}</td>
+      <td data-label="{{ latest_q|quarter }} limit" class="num strong">{{ r.limit|money }}</td>
+      {{ change_cell(r.qoq, "vs. last quarter") }}
+      {{ change_cell(r.yoy, "vs. a year ago") }}
+      <td data-label="{{ spark_quarters }} quarters" class="spark-cell {% if r.qoq %}{{ 'up' if r.qoq > 0 else 'down' }}{% endif %}">{{ r.spark }}</td>
+      <td data-label="Spending, {{ cs.year }}" class="num">{{ r.spending|short_money if r.spending is not none else "–" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+{% if c.shared %}
+<h2>Codes shared with other makers</h2>
+<p class="note">Other companies or labelers also have products under these codes, so their spending is not counted for {{ c.name }}.</p>
+<div class="table-wrap">
+<table class="stack">
+  <thead><tr><th>Code</th><th>Drug</th><th>Billing unit</th><th class="num">{{ latest_q|quarter }} limit</th>
+    <th class="num">vs. last quarter</th><th>Also made by</th></tr></thead>
+  <tbody>
+  {% for r in c.shared %}
+    <tr>
+      <td data-label="Code" class="code"><a href="{{ root }}codes/{{ r.code }}.html">{{ r.code }}</a></td>
+      {{ drug_cell(r) }}
+      <td data-label="Billing unit" class="muted">{{ r.dosage }}</td>
+      <td data-label="{{ latest_q|quarter }} limit" class="num strong">{{ r.limit|money }}</td>
+      {{ change_cell(r.qoq, "vs. last quarter") }}
+      <td data-label="Also made by">{{ r.others|join(", ") }}{% if r.others and r.n_unknown %}, {% endif %}{% if r.n_unknown %}<span class="muted">{{ r.n_unknown }} other labeler{{ "s" if r.n_unknown > 1 }}</span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+{% if c.groups %}
+<h2>Biosimilar markets</h2>
+<ul class="sources">
+{% for g in c.groups %}<li><a href="{{ root }}biosimilars/{{ g.slug }}.html">{{ g.molecule }}</a></li>{% endfor %}
+</ul>
+{% endif %}
+
+<h2>Labeler codes matched to {{ c.name }}</h2>
+<div class="table-wrap">
+<table class="stack">
+  <thead><tr><th>Labeler code</th><th>Listed by FDA as</th><th>Confirmed because</th></tr></thead>
+  <tbody>
+  {% for l in c.labelers %}
+    <tr><td data-label="Labeler code" class="code">{{ l.code }}</td>
+      <td data-label="Listed by FDA as">{{ l.fda_names|join("; ") or "No current FDA listings" }}</td>
+      <td data-label="Confirmed because" class="muted">{{ l.how }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "company_method.html" %}
+{% endblock %}

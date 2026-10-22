@@ -51,6 +51,12 @@
       <a href="{{ root }}coinsurance.html">All reduced-coinsurance drugs</a></span>
     </div>
     {% endif %}
+    {% if p.makers %}
+    <div class="fact">
+      <span class="label">{{ "Made by" if p.makers|length == 1 and not p.n_unknown_makers else "Made by several companies" }}</span>
+      <span class="makers">{% for m in p.makers %}<a href="{{ root }}companies/{{ m.id }}.html">{{ m.name }}</a>{% if m.tickers %} <span class="muted">{{ m.tickers|map(attribute="ticker")|join(" / ") }}</span>{% endif %}{{ ", " if not loop.last }}{% endfor %}{% if p.n_unknown_makers %}, <span class="muted">{{ p.n_unknown_makers }} other labeler{{ "s" if p.n_unknown_makers > 1 }}</span>{% endif %}</span>
+    </div>
+    {% endif %}
     {% if p.group %}
     <div class="fact">
       <span class="kicker" style="margin:0">Biosimilar market</span>

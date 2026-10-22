@@ -19,6 +19,10 @@ Pages written to public/:
     search.html         find a code by code or drug name
     downloads.html      the full history as one CSV (in downloads/)
     about.html          where the data comes from and what it means
+    companies.html      companies that make the drugs, from data/companies.json
+    companies/X.html    (verified labeler codes only; see scripts/companies.py):
+                        their codes, payment limit changes, and Medicare
+                        spending on the codes only they make
     tools/ncr-calculator/index.html
                         biosimilar net cost recovery calculator: products from
                         the sheet, packages from the CMS crosswalk, limits from
@@ -56,6 +60,8 @@ import duckdb
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 from markupsafe import Markup
 
+import companies as company_data  # data/companies.json and its FDA/GLEIF/SEC checks
+
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "data" / "asp.duckdb"
 MANIFEST_PATH = ROOT / "data" / "manifest.json"
@@ -91,6 +97,7 @@ NAV = [
     ("index.html", "Home"),
     ("movers.html", "Movers"),
     ("changes.html", "New & dropped"),
+    ("companies.html", "Companies"),
     ("search.html", "Search"),
     ("downloads.html", "Downloads"),
     ("about.html", "About"),
@@ -825,6 +832,186 @@ def compare(latest: dict[str, dict], prior: dict[str, dict]) -> dict:
 
 
 # --------------------------------------------------------------------------
+# Companies: who makes each code (data/companies.json, checked against the
+# FDA NDC Directory, GLEIF and SEC by scripts/companies.py)
+# --------------------------------------------------------------------------
+
+HOW_VERIFIED = {
+    company_data.AGREES: "GLEIF links the FDA-listed company to it",
+    company_data.NAME_MATCH: "the FDA-listed name includes the company name",
+    company_data.APPROVED: "checked by the site owner",
+}
+
+
+def company_tickers(c: dict, sec: dict | None) -> list[dict]:
+    """Tickers to show: the home-market listing (typed in companies.json),
+    then the US one. A US ticker is shown only when SEC's list has it under
+    the company's CIK (SEC's current ticker is used), or for an OTC ADR,
+    which SEC does not list. A ticker SEC no longer lists is left out until
+    companies.json is fixed (companies_report.py flags it)."""
+    out = []
+    if c["home_listing"]:
+        out.append(c["home_listing"])
+    us = c["us_listing"]
+    listed = sec.get(c["sec_cik"], []) if sec and c["sec_cik"] else []
+    if listed:
+        pick = next((r for r in listed if us and r["ticker"] == us["ticker"]), listed[0])
+        out.append({"ticker": pick["ticker"], "exchange": pick["exchange"] or (us or {}).get("exchange")})
+    elif us and us["exchange"] == "OTC" and not c["sec_cik"]:
+        out.append(us)
+    return out
+
+
+def load_makers(con, quarter: str, warn) -> dict | None:
+    """Which companies make each HCPCS code in the quarter's ASP NDC-HCPCS
+    crosswalk. A row counts only when it is credited (by name or labeler
+    code, see scripts/companies.py) to a company through a verified labeler
+    code. Returns {companies, makers: {code: {company ids}}, unknown: {code:
+    {labeler names not credited}}}, or None when the FDA or GLEIF snapshot
+    is missing."""
+    doc = company_data.load_companies()
+    fda, gleif, sec = company_data.load_fda_labelers(), company_data.load_gleif(), company_data.load_sec()
+    if fda is None or gleif is None:
+        warn("no FDA or GLEIF snapshot in reference/company_sources/; company pages not built "
+             "(run scripts/fetch_company_sources.py).")
+        return None
+    status = {}
+    for c in doc["companies"]:
+        for e in c["labeler_codes"]:
+            status[e["code"]] = company_data.check_labeler(doc, c, e, fda, gleif)[0]
+    published = {doc["_code_owner"][code] for code, s in status.items() if s in company_data.VERIFIED}
+
+    rows = con.execute("""
+        SELECT hcpcs_code, ndc, labeler_name FROM crosswalks
+        WHERE crosswalk_type = 'ASP' AND is_current AND effective_quarter = ?
+    """, [quarter]).fetchall()
+    if not rows:
+        warn(f"no {quarter} ASP crosswalk; company pages not built.")
+        return None
+    makers: dict[str, set[str]] = {}
+    unknown: dict[str, set[str]] = {}
+    for hcpcs, ndc, name in rows:
+        if company_data.SKIN_SUBSTITUTE.match(hcpcs):
+            continue
+        m = company_data.NDC_5_4_2.match(ndc or "")
+        labeler = m.group(1) if m else None
+        cid, reason = company_data.credit_row(doc, labeler, name or "")
+        credited = cid is not None and ((reason == "code" and status.get(labeler) in company_data.VERIFIED)
+                                        or (reason == "name" and cid in published))
+        if credited:
+            makers.setdefault(hcpcs, set()).add(cid)
+        elif reason != "not a manufacturer":
+            unknown.setdefault(hcpcs, set()).add(display_text(name))
+
+    companies = {}
+    for c in doc["companies"]:
+        if c["id"] not in published:
+            continue
+        companies[c["id"]] = {
+            "id": c["id"], "name": c["name"], "tickers": company_tickers(c, sec),
+            "labelers": [{"code": e["code"], "fda_names": sorted(fda.get(e["code"], [])),
+                          "how": HOW_VERIFIED[status[e["code"]]]}
+                         for e in c["labeler_codes"] if status[e["code"]] in company_data.VERIFIED],
+        }
+    return {"companies": companies, "makers": makers, "unknown": unknown}
+
+
+BRIEF_NAMES = 3  # drugs named in the "What this means" biosimilar sentence
+
+
+def company_brief(own: list[dict], total: Decimal | None, total_part_b: Decimal | None,
+                  effect_by_code: dict[str, Decimal | None]) -> dict:
+    """Figures for the plain-language "What this means" box on a company
+    page, all from the company's own codes (rows sorted by spending, largest
+    first). A figure that can't be computed is None and its sentence is left
+    out of the page.
+
+      share_of_part_b  the company's spending as a percent of all Part B drug spending
+      price_trend      this quarter's payment limit change, averaged with each
+                       code weighted by its Medicare spending
+      effect           the Movers "yearly effect" (change per billing unit times
+                       the code's Medicare units in the latest final year), summed
+      top              the largest drug and its share of the company's spending
+      biosimilar       spending on reference products that face biosimilars"""
+    weighted = [r for r in own if r["qoq"] is not None and r["spending"]]
+    weight = sum(r["spending"] for r in weighted)
+    effects = [effect_by_code[r["code"]] for r in own if effect_by_code.get(r["code"]) is not None]
+    facing = [r for r in own if r["group"] and r["group"]["ref"]["code"] == r["code"] and r["spending"]]
+    return {
+        "share_of_part_b": share(total, total_part_b) if total else None,
+        "price_trend": sum(r["qoq"] * r["spending"] for r in weighted) / weight if weight else None,
+        "n_up": sum(1 for r in own if r["qoq"] is not None and r["qoq"] > 0),
+        "n_down": sum(1 for r in own if r["qoq"] is not None and r["qoq"] < 0),
+        "effect": sum(effects) if effects else None,
+        "n_effect": len(effects),
+        "top": ({"row": own[0], "share": share(own[0]["spending"], total)}
+                if total and len(own) > 1 and own[0]["spending"] else None),
+        "biosimilar": ({"spending": sum(r["spending"] for r in facing),
+                        "share": share(sum(r["spending"] for r in facing), total),
+                        "names": [r["name"] for r in facing[:BRIEF_NAMES]], "n": len(facing)}
+                       if facing and total else None),
+    }
+
+
+def build_companies(mk: dict, latest: dict, code_pages: list[dict], usage, usage_years, group_of,
+                    recent_limits, effect_by_code: dict[str, Decimal | None]) -> list[dict]:
+    """One entry per published company that makes at least one code in the
+    latest quarter. A code is the company's own ("only maker") when every
+    crosswalk row for it is credited to that company; Medicare spending is
+    added up only for those codes. Codes shared with other makers, or with
+    labelers not assigned to a company yet, are listed without spending."""
+    pages = {p["code"]: p for p in code_pages}
+    year = max(usage_years) if usage_years else None
+    prev_year = year - 1 if year and (year - 1) in usage_years else None
+    # All Medicare Part B drug spending that year, for each company's share.
+    total_part_b = sum((u[year]["spending"] for u in usage.values()
+                        if year in u and u[year]["spending"] is not None), Decimal(0)) if year else None
+    out = []
+    for cid, c in mk["companies"].items():
+        own, shared = [], []
+        for code in sorted(latest):
+            ids = mk["makers"].get(code, set())
+            if cid not in ids:
+                continue
+            p = pages[code]
+            spend = usage.get(code, {}).get(year, {}).get("spending") if year else None
+            spend_prev = usage.get(code, {}).get(prev_year, {}).get("spending") if prev_year else None
+            row = {"code": code, "name": p["name"], "product": p["product"], "description": p["description"],
+                   "dosage": p["dosage"], "limit": p["newest"]["payment_limit"], "qoq": p["qoq"], "yoy": p["yoy"],
+                   "spark": Markup(sparkline(recent_limits(code))), "spending": spend, "spending_prev": spend_prev, "group": group_of.get(code)}
+            others = sorted(mk["companies"][o]["name"] for o in ids - {cid})
+            n_unknown = len(mk["unknown"].get(code, ()))
+            if others or n_unknown:
+                row["others"] = others
+                row["n_unknown"] = n_unknown
+                shared.append(row)
+            else:
+                own.append(row)
+        if not own and not shared:
+            continue
+        own.sort(key=lambda r: (-(r["spending"] or 0), r["code"]))
+        shared.sort(key=lambda r: r["code"])
+        with_spend = [r for r in own if r["spending"] is not None]
+        total = sum(r["spending"] for r in with_spend) if with_spend else None
+        # Change on the same codes: only codes with spending in both years.
+        both = [r for r in own if r["spending"] is not None and r["spending_prev"] is not None]
+        prev_total = sum(r["spending_prev"] for r in both) if both else None
+        cur_same = sum(r["spending"] for r in both) if both else None
+        listed = own + shared
+        out.append({
+            **c, "own": own, "shared": shared,
+            "spending": total, "spending_change": share(cur_same - prev_total, prev_total) if both else None,
+            "brief": company_brief(own, total, total_part_b, effect_by_code),
+            "n_up": sum(1 for r in listed if r["qoq"] is not None and r["qoq"] > 0),
+            "n_down": sum(1 for r in listed if r["qoq"] is not None and r["qoq"] < 0),
+            "groups": sorted({r["group"]["slug"]: r["group"] for r in listed if r["group"]}.values(),
+                             key=lambda g: g["molecule"]),
+        })
+    out.sort(key=lambda c: (-(c["spending"] or 0), c["name"].lower()))
+    return out
+
+
+# --------------------------------------------------------------------------
 # NCR calculator: products from the biosimilar groups sheet, packages from
 # the CMS crosswalk, limits from the CMS payment limit file, default doses
 # from data/ncr_markets.json
@@ -1005,6 +1192,7 @@ def main() -> int:
     cms_url = {e["local_path"]: e["url"] for e in manifest["files"]}
     last_download = max(datetime.fromisoformat(e["downloaded_at"]) for e in manifest["files"])
 
+    warnings: list[str] = []
     con = duckdb.connect(str(DB_PATH), read_only=True)
     rows = load_rows(con)
     quarters = sorted({r["effective_quarter"] for r in rows})
@@ -1018,12 +1206,12 @@ def main() -> int:
     geo = load_geo(con, {r["hcpcs_code"] for r in rows})
     discarded = load_discarded(con)
     product_names = load_product_names(con)
+    makers = load_makers(con, latest_q, warnings.append)
     con.close()
     if CMS_DATA_MANIFEST.exists():
         with CMS_DATA_MANIFEST.open(encoding="utf-8") as f:
             for e in json.load(f)["files"]:
                 cms_url[e["local_path"]] = e["url"]
-    warnings: list[str] = []
 
     current = [r for r in rows if r["is_current"]]
     by_quarter: dict[str, dict[str, dict]] = {}
@@ -1268,6 +1456,32 @@ def main() -> int:
         if u:
             u["sources"] = [{"name": f.rsplit("/", 1)[-1], "url": cms_url.get(f)} for f in u["source_files"]]
 
+    # ---- Companies ---------------------------------------------------------
+    effect_by_code = {c["code"]: c["effect"] for c in compared}
+    company_list = (build_companies(makers, latest, code_pages, usage, usage_years, group_of, recent_limits,
+                                    effect_by_code) if makers else [])
+    company_of = {c["id"]: c for c in company_list}
+    for p in code_pages:
+        ids = makers["makers"].get(p["code"], set()) if makers and p["in_latest"] else set()
+        p["makers"] = sorted((company_of[i] for i in ids if i in company_of), key=lambda c: c["name"].lower())
+        p["n_unknown_makers"] = len(makers["unknown"].get(p["code"], ())) if makers and p["in_latest"] else 0
+    for c in compared:
+        ids = makers["makers"].get(c["code"], set()) if makers else set()
+        sole = len(ids) == 1 and not makers["unknown"].get(c["code"])
+        c["maker"] = company_of.get(next(iter(ids))) if sole else None
+    spend_year = max(usage_years) if usage_years else None
+    company_summary = {
+        "year": spend_year,
+        "preliminary": bool(spend_year and usage_years[spend_year]["preliminary"]),
+        "prev_year": spend_year - 1 if spend_year and (spend_year - 1) in usage_years else None,
+        "effect_year": effect_year,
+        "prior_q": prior_q,
+        "n_own": sum(len(c["own"]) for c in company_list),
+        "n_shared": len({r["code"] for c in company_list for r in c["shared"]}),
+        "n_unassigned": sum(1 for code in latest
+                            if makers and makers["unknown"].get(code) and not makers["makers"].get(code)),
+    }
+
     # ---- Home page lead story ---------------------------------------------
     # The largest percent increase (same ranking and $1 floor as Movers), with
     # its real payment limits for the last few quarters.
@@ -1295,19 +1509,27 @@ def main() -> int:
 
     # The header search box suggests codes as you type. Its list is written as
     # a script (not JSON) so it also works when a page is opened from disk.
-    index = [[p["code"], p["name"], money(p["newest"]["payment_limit"]),
-              " ".join([p["description"]] + p["other_descriptions"]
-                       + sorted({x["drug_name"] or "" for x in p["products"]}))]
-             for p in code_pages]
+    # Companies come first, with their page as a fifth item.
+    index = [[" ".join(t["ticker"] for t in c["tickers"]) or "Company", c["name"], "Company",
+              " ".join([c["id"]] + [t["ticker"] for t in c["tickers"]]), f"companies/{c['id']}.html"]
+             for c in company_list]
+    index += [[p["code"], p["name"], money(p["newest"]["payment_limit"]),
+               " ".join([p["description"]] + p["other_descriptions"]
+                        + sorted({x["drug_name"] or "" for x in p["products"]})
+                        + [m["name"] for m in p["makers"]])]
+              for p in code_pages]
     (OUT / "search-index.js").write_text(
         "window.SEARCH_INDEX = " + json.dumps(index, ensure_ascii=False, separators=(",", ":")) + ";\n",
         encoding="utf-8")
 
     env = make_env()
+    # The Companies link appears once a company is published, and the
+    # Biosimilars link once a group is; both come before Search.
+    nav = [n for n in NAV if n[0] != "companies.html" or company_list]
+    k = next(i for i, n in enumerate(nav) if n[0] == "search.html")
     common = {
-        # The Biosimilars link appears once at least one group is published.
-        "nav": NAV[:3] + ([("biosimilars.html", "Biosimilars")] if groups else [])
-               + [(NCR_PAGE, "NCR calculator")] + NAV[3:],
+        "nav": nav[:k] + ([("biosimilars.html", "Biosimilars")] if groups else [])
+               + [(NCR_PAGE, "NCR calculator")] + nav[k:],
         # Added to the style.css and script links so browsers fetch them
         # again whenever they change instead of using an old saved copy.
         "asset_version": hashlib.sha256(STYLESHEET.read_bytes() + CHART_SCRIPT.read_bytes()
@@ -1354,6 +1576,13 @@ def main() -> int:
           csv_kb=round(csv_path.stat().st_size / 1024), first_q=quarters[0],
           n_versions=len({(r["source_file"]) for r in rows}))
 
+    if company_list:
+        (OUT / "companies").mkdir()
+        write("companies.html", "companies.html", companies=company_list, cs=company_summary)
+        for c in company_list:
+            write(f"companies/{c['id']}.html", "company.html", c=c, cs=company_summary,
+                  spark_quarters=SPARK_QUARTERS)
+
     if groups:
         (OUT / "biosimilars").mkdir()
         write("biosimilars.html", "biosimilars.html", groups=groups, groups_source=groups_source)
@@ -1379,6 +1608,8 @@ def main() -> int:
     print(f"  biosimilar groups published: {len(groups)}"
           + (f" (from {', '.join(groups_source)})" if groups_source else " (no sheet snapshot loaded)"))
     print(f"  NCR calculator: {len(ncr_markets)} markets, {len(ncr_codes)} codes priced from {latest_q}")
+    print(f"  companies: {len(company_list)} published; {company_summary['n_own']} codes with one maker, "
+          f"{company_summary['n_shared']} shared, {company_summary['n_unassigned']} not assigned yet")
     if mismatch:
         print(f"\nNOTE: these codes have a reduced coinsurance percentage or the CMS note "
               f"'{INFLATION_NOTE}', but not both: {', '.join(mismatch)}")

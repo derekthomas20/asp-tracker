@@ -132,7 +132,10 @@ requirements.txt     Python dependencies (keep short)
    should use `is_latest_release` to count each period once.
 3. **Build** (`scripts/build_site.py`): query the database and generate the
    pages in `public/` from the templates in `site/`. All numbers on the site
-   come from these queries.
+   come from these queries. Company pages (`companies.html`,
+   `companies/<id>.html`) use only verified labeler codes; Medicare
+   spending is added up only for codes every crosswalk product of which is
+   credited to that one company.
 
 ## Working conventions
 

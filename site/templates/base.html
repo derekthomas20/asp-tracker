@@ -79,7 +79,7 @@ document.addEventListener("DOMContentLoaded", function () {
     hits.forEach(function (r) {
       var li = document.createElement("li");
       var a = document.createElement("a");
-      a.href = root + "codes/" + r[0] + ".html";
+      a.href = root + (r[4] || "codes/" + r[0] + ".html");  // companies carry their own page
       a.setAttribute("role", "option");
       [["code", r[0]], ["name", r[1]], ["price", r[2]]].forEach(function (p) {
         var s = document.createElement("span"); s.className = p[0]; s.textContent = p[1]; a.appendChild(s);

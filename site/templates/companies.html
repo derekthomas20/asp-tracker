@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "macros.html" import tickers %}
+{% block title %}Companies, {{ latest_q|quarter }}{% endblock %}
+{% block content %}
+<span class="kicker">Companies · {{ latest_q|quarter }}</span>
+<h1>Who makes the drugs</h1>
+<p class="dek">The {{ companies|length|num }} companies behind the codes in the {{ latest_q|quarter }} file, with Medicare Part B spending on the drugs only they make.</p>
+
+<div class="figures" style="padding-top:var(--space-4)">
+  <div class="figure"><span class="big">{{ cs.n_own|num }}</span><span class="label">codes made by one company</span></div>
+  <div class="figure"><span class="big">{{ cs.n_shared|num }}</span><span class="label">codes shared by several makers</span></div>
+  <div class="figure"><span class="big">{{ cs.n_unassigned|num }}</span><span class="label">codes not assigned to a company yet</span></div>
+</div>
+
+<p class="note">“Medicare spending” is what Medicare Part B paid for drugs only that company makes. “Price change” is this quarter’s change in those drugs’ payment limits,
+with bigger-selling drugs counting more. Open a company for a plain-language summary.</p>
+<div class="table-wrap">
+<table class="stack">
+  <thead><tr>
+    <th>Company</th><th>Tickers</th>
+    <th class="num">Medicare spending, {{ cs.year }}{% if cs.preliminary %} (prelim.){% endif %}</th>
+    {% if cs.prev_year %}<th class="num">vs. {{ cs.prev_year }}</th>{% endif %}
+    <th class="num">Price change, {{ latest_q|quarter }}</th>
+    <th class="num">Drugs</th>
+  </tr></thead>
+  <tbody>
+  {% for c in companies %}
+    {% set t = c.brief.price_trend %}
+    <tr>
+      <td data-label="Company"><a class="name" href="{{ root }}companies/{{ c.id }}.html">{{ c.name }}</a></td>
+      <td data-label="Tickers" class="muted">{{ tickers(c.tickers) }}</td>
+      <td data-label="Medicare spending" class="num strong">{{ c.spending|short_money if c.spending is not none else "–" }}</td>
+      {% if cs.prev_year %}<td data-label="vs. {{ cs.prev_year }}" class="num {% if c.spending_change %}{{ 'up' if c.spending_change > 0 else 'down' }}{% endif %}">{{ c.spending_change|arrow_percent if c.spending_change is not none else "–" }}</td>{% endif %}
+      <td data-label="Price change, {{ latest_q|quarter }}" class="num {% if t %}{{ 'up' if t > 0 else 'down' }}{% endif %}">{{ t|arrow_percent if t is not none else "–" }}</td>
+      <td data-label="Drugs" class="num">{{ c.own|length|num }}{% if c.shared %} <span class="muted">+ {{ c.shared|length }} shared</span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "company_method.html" %}
+{% endblock %}
