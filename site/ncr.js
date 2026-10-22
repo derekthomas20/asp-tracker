@@ -28,7 +28,7 @@ let saved = {};
 try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { saved = {}; }
 if (typeof saved !== "object" || Array.isArray(saved)) saved = {};
 const defaultSettings = () => ({medShare: 60, commPct: 125, seq: true, wasteBill: true, mdvReuse: false, erosion: 0, annual: 200,
-  is340: false, share340: 50, volBasis: "doses", annualUnits: null, annualPacks: null});
+  is340: false, share340: 50, volBasis: "doses", annualUnits: null});
 // A new comparison of your own starts with the first market's patient weight and BSA.
 const defaultPatient = () => ({weight: DATA.markets[0].dose.weight, bsa: DATA.markets[0].dose.bsa});
 
@@ -59,8 +59,7 @@ function customProduct(c, e) {
     unitLabel: c.unit_label, flatOnly: c.unit_name === "billing units",
     dose: {basis: c.unit_name === "billing units" ? "flat" : d.basis, value: n(d.value)},
     // this product's own yearly volume; "" means use the shared figure
-    annual: typeof e.annual === "string" ? e.annual : "", annualUnits: typeof e.annualUnits === "string" ? e.annualUnits : "",
-    annualPacks: typeof e.annualPacks === "string" ? e.annualPacks : ""});
+    annual: typeof e.annual === "string" ? e.annual : "", annualUnits: typeof e.annualUnits === "string" ? e.annualUnits : ""});
 }
 
 // Runtime markets: the CMS data plus whatever this visitor entered.
@@ -73,7 +72,7 @@ DATA.markets.forEach(d => {
     // measure (mg, mcg or units), so the ported math needs no change.
     id: d.id, name: d.name, unitMg: d.unit_size, unitName: d.unit_name, unitLabel: d.unit_label,
     dose: Object.assign({}, d.dose, s.dose || {}),
-    example: !!s.example, packsOf: typeof s.packsOf === "string" ? s.packsOf : "",
+    example: !!s.example,
     products: d.products.map(p => makeProduct(p, sp[p.key]))
   };
 });
@@ -85,7 +84,7 @@ function makeCustom(id, s) {
     id, custom: true, name: typeof s.name === "string" && s.name.trim() ? s.name : "My comparison",
     dose: Object.assign({basis: "flat", value: 0}, defaultPatient(),
       has(s.weight) ? {weight: n(s.weight)} : {}, has(s.bsa) ? {bsa: n(s.bsa)} : {}),
-    example: !!s.example, packsOf: typeof s.packsOf === "string" ? s.packsOf : "",
+    example: !!s.example,
     products: list.filter(e => CAT[e.key]).map(e => customProduct(CAT[e.key], e)),
     gone: list.filter(e => !CAT[e.key])
   };
@@ -98,7 +97,7 @@ const state = {
   market: markets[saved.market] ? saved.market : DATA.markets[0].id,
   settings: Object.assign(defaultSettings(), saved.settings || {})
 };
-if (!["units", "packs"].includes(state.settings.volBasis)) state.settings.volBasis = "doses";
+if (state.settings.volBasis !== "units") state.settings.volBasis = "doses";
 
 const overridden = p => p.limit !== (p.cmsLimit || "");
 function savedProduct(p, custom) {
@@ -113,7 +112,6 @@ function savedProduct(p, custom) {
     e.key = p.key; e.name = p.name; e.dose = p.dose;
     if (p.annual !== "") e.annual = p.annual;
     if (p.annualUnits !== "") e.annualUnits = p.annualUnits;
-    if (p.annualPacks !== "") e.annualPacks = p.annualPacks;
     e.types = {}; p.pkgs.forEach(k => { e.types[k.key] = k.type; });
   }
   return e;
@@ -122,13 +120,13 @@ function save() {
   const out = {market: state.market, settings: state.settings, markets: {}, customs: {}};
   Object.values(markets).forEach(m => {
     if (m.custom) {
-      out.customs[m.id] = {name: m.name, weight: m.dose.weight, bsa: m.dose.bsa, example: m.example, packsOf: m.packsOf,
+      out.customs[m.id] = {name: m.name, weight: m.dose.weight, bsa: m.dose.bsa, example: m.example,
         products: m.products.map(p => savedProduct(p, true)).concat(m.gone)};
       return;
     }
     const products = {};
     m.products.forEach(p => { const e = savedProduct(p, false); if (Object.keys(e).length) products[p.key] = e; });
-    out.markets[m.id] = {dose: m.dose, example: m.example, packsOf: m.packsOf, products};
+    out.markets[m.id] = {dose: m.dose, example: m.example, products};
   });
   try { localStorage.setItem(KEY, JSON.stringify(out)); } catch (e) {}
 }
@@ -140,40 +138,18 @@ const hasLimit = p => has(p.limit);
 const pm = (m, p) => !m.custom ? m : {unitMg: p.unitMg, unitName: p.unitName,
   dose: {basis: p.dose.basis, value: p.dose.value, weight: m.dose.weight, bsa: m.dose.bsa}};
 const used = k => k.type !== "OFF";
-// Yearly volume is entered as doses, billing units administered, or
-// packages bought.
+// Yearly volume is entered as doses or as billing units administered.
 const byUnits = () => state.settings.volBasis === "units";
-const byPacks = () => state.settings.volBasis === "packs";
-const volField = () => byUnits() ? "annualUnits" : byPacks() ? "annualPacks" : "annual";
-const VOL = {annual: ["Doses per year", "Doses / year"], annualUnits: ["Billing units per year", "Billing units / year"],
-  annualPacks: ["Packages per year", "Packages / year"]};
-// Doses a year from one product's billing units or packages a year, using
-// its billing units per dose (D) or the packages its dose uses (combo c).
-function toDoses(v, p, D, c, q) {
-  if (byUnits()) return D > 0 ? v / D : 0;
-  if (!byPacks()) return v;
-  const per = c ? packsPerDose(p, c, q) : 0;
-  return per > 0 ? v / per : 0;
-}
-// The product whose packages the shared packages-a-year figure counts.
-const packsProduct = m => m.products.find(p => p.key === m.packsOf) || m.products[0];
-// Doses a year for one product: its own figure in a comparison of your own,
-// else the shared one. Shared packages are the packs product's, turned into
-// doses with that product's vials per dose, and every product gets those doses.
-function yearDoses(m, p, D, c, q) {
+const volField = () => byUnits() ? "annualUnits" : "annual";
+const VOL = {annual: ["Doses per year", "Doses / year"], annualUnits: ["Billing units per year", "Billing units / year"]};
+// Doses a year for one product with D billing units per dose: the shared
+// figure, or in a comparison of your own the product's figure when entered.
+// Billing units a year are turned into doses with the product's own D.
+function yearDoses(m, p, D) {
   const own = m.custom ? p[volField()] : "";
-  if (has(own)) return toDoses(n(own), p, D, c, q);
-  const v = n(state.settings[volField()]);
-  return byPacks() ? sharedPackDoses(m) : toDoses(v, p, D, c, q);
+  const v = has(own) ? n(own) : n(state.settings[volField()]);
+  return byUnits() ? (D > 0 ? v / D : 0) : v;
 }
-function sharedPackDoses(m) {
-  if (packDoses === null) {
-    const r = packsProduct(m), rq = r && pm(m, r), rD = r ? doseUnits(rq) : 0;
-    packDoses = r ? toDoses(n(state.settings.annualPacks), r, rD, bestCombo(costed(r), rq, rD), rq) : 0;
-  }
-  return packDoses;
-}
-let packDoses = null;  // the shared packages a year as doses; reset by update()
 const qty = v => v.toLocaleString("en-US", {maximumFractionDigits: 1});
 // 340B: the share of doses bought at the 340B price (0 when 340B is off).
 const share340 = () => state.settings.is340 ? Math.min(100, Math.max(0, n(state.settings.share340))) / 100 : 0;
@@ -248,7 +224,6 @@ function renderControls() {
   $("wasteBill").checked = s.wasteBill; $("mdvReuse").checked = s.mdvReuse;
   $("volBasis").value = s.volBasis; $("annual").value = s[volField()] == null ? "" : s[volField()];
   $("annualL").textContent = VOL[volField()][0];
-  renderPacksOf();
   $("is340").checked = s.is340; $("share340").value = s.share340;
   $("unitLine").innerHTML = m.custom
     ? `Billing units come from each product’s HCPCS code (CMS ${esc(DATA.quarter)}). Set each product’s dose under <b>Your prices by package</b>.`
@@ -275,14 +250,6 @@ function doseVis() {
   $("wtL").hidden = b !== "mgkg"; $("bsaL").hidden = b !== "mgm2";
   const u = m.unitName;
   $("doseValL").firstElementChild.textContent = b === "mgkg" ? `Dose (${u}/kg)` : b === "mgm2" ? `Dose (${u}/m²)` : `Dose (${u})`;
-}
-
-// With volume in packages: which product's packages the shared figure counts.
-function renderPacksOf() {
-  const m = M(), r = packsProduct(m);
-  $("packsOfL").hidden = !byPacks() || !m.products.length;
-  $("packsOf").innerHTML = m.products.map(p => `<option value="${p.key}">${esc(p.name)}</option>`).join("");
-  if (r) $("packsOf").value = r.key;
 }
 
 // Product search for comparisons of your own: every word typed must appear
@@ -363,19 +330,11 @@ function renderStatus(p) {
 // Packages bought in a year for one product: vials per dose × doses per
 // year. With multi-dose reuse, multi-dose vials are counted by the drug
 // actually used, so those counts are approximate.
-// The share of each opened multi-dose vial a dose uses up (1 without reuse).
-function mdvUsed(p, c, m) {
-  let mdvU = 0;
-  p.pkgs.filter(k => units(m, k) > 0).forEach((k, i) => { if (k.type === "MDV") mdvU += units(m, k) * c.counts[i]; });
-  return state.settings.mdvReuse && mdvU > 0 ? (mdvU - c.saved) / mdvU : 1;
-}
-// Packages one dose uses up, counted the same way as perYear().
-function packsPerDose(p, c, m) {
-  const used = mdvUsed(p, c, m);
-  return p.pkgs.filter(k => units(m, k) > 0).reduce((t, k, i) => t + c.counts[i] * (k.type === "MDV" ? used : 1), 0);
-}
 function perYear(p, c, m, annual) {
-  const pk = p.pkgs.filter(k => units(m, k) > 0), used = mdvUsed(p, c, m);
+  const pk = p.pkgs.filter(k => units(m, k) > 0);
+  let mdvU = 0;
+  pk.forEach((k, i) => { if (k.type === "MDV") mdvU += units(m, k) * c.counts[i]; });
+  const used = state.settings.mdvReuse && mdvU > 0 ? (mdvU - c.saved) / mdvU : 1;
   return pk.map((k, i) => {
     if (!c.counts[i]) return "";
     const mdv = k.type === "MDV", count = Math.ceil(c.counts[i] * annual * (mdv ? used : 1) - 1e-9);
@@ -384,7 +343,6 @@ function perYear(p, c, m, annual) {
 }
 
 function update() {
-  packDoses = null;
   const m = M(), s = state.settings;
   $("erosionOut").textContent = (s.erosion > 0 ? "+" : "") + s.erosion + "%";
   $("moreSum").textContent = "· Commercial " + n(s.commPct) + "% of limit"
@@ -433,7 +391,7 @@ function update() {
   // package. y is doses a year and yr the NCR a year; products are ranked by
   // yr, which gives the per-dose order whenever every product has the same y.
   const results = channel => m.products.filter(ready).map(p => {
-    const q = pm(m, p), Dp = doseUnits(q), c = bestCombo(costed(p, channel), q, Dp), y = yearDoses(m, p, Dp, c, q);
+    const q = pm(m, p), Dp = doseUnits(q), c = bestCombo(costed(p, channel), q, Dp), y = yearDoses(m, p, Dp);
     return {p, q, D: Dp, c, y, yr: c ? c.ncr * y : 0};
   }).filter(r => r.c).sort((a, b) => (b.yr - a.yr) || (b.c.ncr - a.c.ncr));
   const res = results("mix");
@@ -464,9 +422,7 @@ function update() {
   const shared = n(s[volField()]), ownVol = m.custom && m.products.some(p => has(p[volField()]));
   document.querySelectorAll("#priceBody .ncr-yr").forEach(i => { i.placeholder = qty(shared); });
   $("volNote").hidden = !(byUnits() && m.custom && !oneUnit);
-  const pr = packsProduct(m);
-  const volText = (byUnits() ? `${qty(shared)} billing units a year` : byPacks() ? `${qty(shared)} packages of ${pr ? pr.name : "the first product"} a year (${qty(sharedPackDoses(m))} doses)`
-    : `${qty(shared)} doses a year`) + (ownVol ? " unless set for a product" : "");
+  const volText = (byUnits() ? `${qty(shared)} billing units a year` : `${qty(shared)} doses a year`) + (ownVol ? " unless set for a product" : "");
   $("verdictSub").textContent = m.custom || D ? `${m.name}, ${m.custom ? "each product at its own dose" : D + " billing units per dose"}, ${volText}`
     + (on340 ? `, ${Math.round(sh * 100)}% bought at 340B.` : ".") : "";
   let summary = "";
@@ -532,7 +488,6 @@ function update() {
   // a year of purchases: packages by strength, spend, payment and NCR
   $("buySub").textContent = "Packages needed for the doses given per year, by strength, if every dose used that product."
     + (byUnits() ? " Doses a year are the billing units a year divided by the billing units in one dose." : "")
-    + (byPacks() ? " Doses a year are the packages a year divided by the packages one dose uses." : "")
     + (on340 ? ` About ${Math.round(sh * 100)}% of them are bought at the 340B price.` : "");
   $("buyBody").innerHTML = res.map((r, i) => `<tr class="${i === 0 ? "ncr-best" : ""}"><td><b>${esc(r.p.name)}</b> <span class="muted">${esc(r.p.hcpcs)}</span></td>
       <td>${esc(perYear(r.p, r.c, r.q, r.y)) || "—"}</td>
@@ -613,7 +568,7 @@ $("priceBody").addEventListener("click", e => {
   if (b.dataset.act === "remove") {
     const m = M();
     m.products = m.products.filter(x => x !== p);
-    renderPricing(); renderFound(); renderPacksOf(); doseVis();
+    renderPricing(); renderFound(); doseVis();
     toast("toast", p.name + " removed.");
   }
   update();
@@ -672,14 +627,14 @@ $("found").addEventListener("click", e => {
   const b = e.target.closest("button[data-add]"), m = M(); if (!b || !m.custom) return;
   const c = CAT[b.dataset.add]; if (!c || m.products.some(p => p.key === c.key)) return;
   m.products.push(customProduct(c));
-  renderPricing(); renderFound(); renderPacksOf(); doseVis(); update();
+  renderPricing(); renderFound(); doseVis(); update();
   toast("findToast", c.name + " added" + (c.dose ? "." : ". Enter its dose under Your prices by package."), 4000);
 });
 $("addMarket").addEventListener("change", e => {
   const m = M(), mk = markets[e.target.value]; if (!m.custom || !mk) return;
   const added = addMarket(m, mk);
   e.target.value = "";
-  renderPricing(); renderFound(); renderPacksOf(); doseVis(); update();
+  renderPricing(); renderFound(); doseVis(); update();
   toast("findToast", added ? `${added} product${added > 1 ? "s" : ""} from ${mk.name} added.` : `Every product in ${mk.name} is already here.`, 4000);
 });
 
@@ -706,21 +661,15 @@ $("market").addEventListener("change", e => { state.market = e.target.value; $("
 $("doseBasis").addEventListener("change", e => { M().dose.basis = e.target.value; doseVis(); update(); });
 [["doseVal", "value"], ["weight", "weight"], ["bsa", "bsa"]].forEach(([id, f]) => $(id).addEventListener("input", e => { M().dose[f] = n(e.target.value); update(); }));
 $("annual").addEventListener("input", e => { state.settings[volField()] = n(e.target.value); update(); });
-$("packsOf").addEventListener("change", e => { M().packsOf = e.target.value; update(); });
-// Switching to billing units or packages for the first time starts from the
-// doses already entered: doses × the billing units in one dose (the first
-// product's, in a comparison of your own), or × the packages the packs
-// product's dose uses.
+// Switching to billing units for the first time starts from the doses
+// already entered: doses × the billing units in one dose (the first
+// product's, in a comparison of your own).
 $("volBasis").addEventListener("change", e => {
   const s = state.settings, m = M();
-  s.volBasis = ["units", "packs"].includes(e.target.value) ? e.target.value : "doses";
+  s.volBasis = e.target.value === "units" ? "units" : "doses";
   if (byUnits() && s.annualUnits == null) {
     const p = m.custom ? m.products.find(x => doseUnits(pm(m, x)) > 0) : null;
     s.annualUnits = n(s.annual) * (m.custom ? (p ? doseUnits(pm(m, p)) : 1) : doseUnits(m));
-  }
-  if (byPacks() && s.annualPacks == null) {
-    const r = packsProduct(m), rq = r && pm(m, r), rD = r ? doseUnits(rq) : 0, c = r ? bestCombo(costed(r), rq, rD) : null;
-    s.annualPacks = Math.round(n(s.annual) * (c ? packsPerDose(r, c, rq) : 1));
   }
   renderControls(); renderPricing(); update();
 });
@@ -730,7 +679,7 @@ $("volBasis").addEventListener("change", e => {
 $("copyBtn").addEventListener("click", () => {
   const rows = [["Product", "HCPCS", "Vials used", "Administered (billing units)", "Discarded", "Billed units", "Acquisition", "Payment", "NCR/dose", "Doses/year", "NCR/year", "Packages/year"]];
   const m = M();
-  m.products.filter(ready).map(p => { const q = pm(m, p), D = doseUnits(q), c = bestCombo(costed(p), q, D), y = yearDoses(m, p, D, c, q); return {p, q, D, c, y, yr: c ? c.ncr * y : 0}; })
+  m.products.filter(ready).map(p => { const q = pm(m, p), D = doseUnits(q), c = bestCombo(costed(p), q, D), y = yearDoses(m, p, D); return {p, q, D, c, y, yr: c ? c.ncr * y : 0}; })
     .filter(r => r.c).sort((a, b) => (b.yr - a.yr) || (b.c.ncr - a.c.ncr))
     .forEach(({p, q, D, c, y, yr}) => rows.push([p.name, p.hcpcs, c.desc, D, +c.discarded.toFixed(2), +c.billed.toFixed(2), c.cost.toFixed(2), c.pay.toFixed(2), c.ncr.toFixed(2), +y.toFixed(1), yr.toFixed(0), perYear(p, c, q, y)]));
   if (state.settings.is340) rows.push([], ["340B share of doses", Math.round(share340() * 100) + "%"]);
