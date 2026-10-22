@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% from "macros.html" import code_table %}
-{% block title %}New and dropped codes, {{ s.latest_q|quarter }}{% endblock %}
 {% block content %}
 <span class="kicker">{{ s.prior_q|quarter }} → {{ s.latest_q|quarter }}</span>
 <h1>New and dropped codes</h1>

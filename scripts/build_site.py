@@ -30,6 +30,8 @@ Pages written to public/:
     tools/ncr-calculator/products.js
                         every product in the CMS crosswalk, for comparisons
                         visitors build themselves on the calculator page
+    sitemap.xml         every page, for search engines, dated by its CMS posting
+    robots.txt          lets search engines in and points them to sitemap.xml
     search-index.js    the list behind the header search suggestions
     charts.js           draws the Chart.js line charts in the site's style
 
@@ -93,6 +95,7 @@ IRA_LIST = 8  # rows in the home page reduced coinsurance list
 # reference product is the thick navy line.
 GROUP_SHADES = ["--color-teal", "--color-teal-light", "--color-series-3",
                 "--color-series-4", "--color-series-5", "--color-series-6"]
+SITE_URL = "https://therxcurve.com/"  # canonical addresses, Open Graph links and sitemap.xml
 REBATE_PAGE = ("https://www.cms.gov/initiatives/medicare-prescription-drug-affordability/"
                "overview/medicare-inflation-rebate-program")
 
@@ -532,8 +535,9 @@ def clean_brand(text: str | None) -> str:
     return t.title() if t.isupper() else t
 
 
-def load_product_names(con) -> dict[str, str]:
-    """A product name for each code, from CMS files only:
+def load_product_names(con) -> tuple[dict[str, str], dict[str, str]]:
+    """A product name for each code, and the Part B Spending file's generic
+    name for each code ('pembrolizumab'), from CMS files only. Product names:
 
       1. the NDC-HCPCS crosswalk drug names for the newest quarter the code
          appears in (names differing only in capitals are one name; a name
@@ -582,7 +586,7 @@ def load_product_names(con) -> dict[str, str]:
             out[code] = " / ".join(names[k] for k in keys)
         elif brand:
             out[code] = brand
-    return out
+    return out, {code: clean_brand(g).lower() for code, g in generics.items() if clean_brand(g)}
 
 
 def load_discarded(con) -> dict[str, dict]:
@@ -1218,6 +1222,109 @@ def build_ncr_catalog(latest: dict[str, dict], packages: dict[str, set], groups:
 
 
 # --------------------------------------------------------------------------
+# Page titles and descriptions for search engines and link previews. They
+# are written from the same figures the page shows, never typed in.
+# --------------------------------------------------------------------------
+
+def seo(title: str, description: str, jsonld: dict | None = None) -> dict:
+    return {"title": title, "description": " ".join(description.split()), "jsonld": jsonld}
+
+
+def quarter_dates(q: str) -> tuple[date, date]:
+    """'2026Q4' -> (2026-10-01, 2026-12-31)."""
+    year, last_month = int(q[:4]), int(q[5]) * 3
+    return (date(year, last_month - 2, 1),
+            date(year, last_month, calendar.monthrange(year, last_month)[1]))
+
+
+def dataset(name: str, description: str, url: str, first_q: str, last_q: str,
+            modified: date | None, keywords: list[str], measured: str, source_page: str) -> dict:
+    """schema.org Dataset markup. No license is given: the CMS files don't
+    state one, and Rxcurve doesn't claim one for them."""
+    return {
+        "@context": "https://schema.org", "@type": "Dataset",
+        "name": name, "description": description, "url": url,
+        "temporalCoverage": f"{quarter_dates(first_q)[0]}/{quarter_dates(last_q)[1]}",
+        "variableMeasured": measured,
+        "keywords": keywords,
+        "isAccessibleForFree": True,
+        "creator": {"@type": "Organization", "name": "Rxcurve", "url": SITE_URL},
+        "isBasedOn": source_page,
+        **({"dateModified": modified.isoformat()} if modified else {}),
+        "distribution": [{"@type": "DataDownload", "encodingFormat": "text/csv",
+                          "contentUrl": f"{SITE_URL}downloads/{CSV_NAME}"}],
+    }
+
+
+def page_url(path: str) -> str:
+    """The address search engines should use: '' for the home page,
+    'tools/ncr-calculator/' for a folder's index.html."""
+    return SITE_URL + (path[:-len("index.html")] if path.endswith("index.html") else path)
+
+
+def code_seo(p: dict, generic: str | None, source_page: str) -> dict:
+    """'J9271 Keytruda (pembrolizumab): Medicare Part B payment limit, 4Q26'."""
+    name = p["name"]
+    # CMS abbreviates some generic names ('betamethasone acetate,sod phos'); those are left out.
+    if p["product"] and generic and not re.search(r"[/,]", generic) and generic not in p["product"].lower():
+        name += f" ({generic})"
+    q, limit = quarter_label(p["last_q"]), p["newest"]["payment_limit"]
+    title = f"{p['code']} {name}: Medicare Part B payment limit, {q}"
+    since = f"History since {quarter_label(p['first_q'])}, from the CMS ASP pricing files."
+    if limit is None:
+        price = f"CMS gives no Medicare Part B payment limit for {q}."
+    else:
+        price = f"Medicare Part B payment limit, {q}: {money(limit)} per {p['dosage']}"
+        price += f" ({percent(p['qoq'])} vs. last quarter)." if p["qoq"] is not None else "."
+    lead = f"{p['code']} {name}." if p["in_latest"] else f"{p['code']} {name}, last listed by CMS in {q}."
+    description = f"{lead} {price} {since}"
+    return seo(title, description,
+               dataset(title, description, page_url(f"codes/{p['code']}.html"), p["first_q"], p["last_q"],
+                       p["newest"]["cms_posted_date"], [p["code"], p["name"], "HCPCS", "ASP", "Medicare Part B"],
+                       f"Medicare Part B payment limit per {p['dosage']}", source_page))
+
+
+def company_seo(c: dict, cs: dict, q: str) -> dict:
+    tickers = " / ".join(t["ticker"] for t in c["tickers"])
+    title = f"{c['name']}{f' ({tickers})' if tickers else ''}: Medicare Part B drugs and payment limits, {q}"
+    n = len(c["own"]) + len(c["shared"])
+    description = f"{n:,} Medicare Part B drug code{'s' if n != 1 else ''} from {c['name']} in the CMS {q} file"
+    if c["spending"] is not None:
+        description += (f", and {big_money(c['spending'])} in Medicare Part B spending in {cs['year']}"
+                        f"{' (preliminary)' if cs['preliminary'] else ''} on drugs only {c['name']} makes")
+    trend = c["brief"]["price_trend"]
+    if trend is not None:
+        description += f". Payment limits {percent(trend)} this quarter, weighted by spending"
+    return seo(title, description + ".")
+
+
+def group_seo(g: dict, q: str) -> dict:
+    ref, n = g["ref"], len(g["bios"])
+    title = f"{g['molecule']} biosimilars vs. {ref['name']}: Medicare payment limits, {q}"
+    description = (f"{ref['name']} ({ref['code']}) and {n} {g['molecule'].lower()} biosimilar{'s' if n != 1 else ''}: "
+                   f"{q} Medicare Part B payment limits per {ref['dosage']}")
+    if g["lowest"]:
+        description += f". Lowest: {g['lowest']['name']}, {percent(g['lowest']['vs_ref'])} vs. the reference"
+    m = g["market"]
+    if m and m["latest"]["bio_share"] is not None:
+        description += (f". Biosimilars had {share_text(m['latest']['bio_share'])} of Medicare claims "
+                        f"in {m['latest']['label']}")
+    return seo(title, description + ".")
+
+
+def write_sitemap(pages: list[tuple[str, date | None]]) -> None:
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for path, modified in sorted(pages):
+        lines.append(f"<url><loc>{html.escape(page_url(path))}</loc>"
+                     + (f"<lastmod>{modified.isoformat()}</lastmod>" if modified else "") + "</url>")
+    lines.append("</urlset>")
+    (OUT / "sitemap.xml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (OUT / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {SITE_URL}sitemap.xml\n",
+                                    encoding="utf-8")
+
+
+# --------------------------------------------------------------------------
 # Writing the site
 # --------------------------------------------------------------------------
 
@@ -1264,7 +1371,7 @@ def main() -> int:
     usage, usage_years, usage_ytd = load_usage(con)
     geo = load_geo(con, {r["hcpcs_code"] for r in rows})
     discarded = load_discarded(con)
-    product_names = load_product_names(con)
+    product_names, generic_names = load_product_names(con)
     makers = load_makers(con, latest_q, warnings.append)
     con.close()
     if CMS_DATA_MANIFEST.exists():
@@ -1488,6 +1595,7 @@ def main() -> int:
             "description": display_text(newest["short_description"]),
             "product": product_names.get(code),
             "name": product_names.get(code) or display_text(newest["short_description"]),
+            "generic": generic_names.get(code),
             "other_descriptions": sorted({h["description"] for h in history} - {display_text(newest["short_description"])}),
             "dosage": newest["hcpcs_dosage"],
             "newest": newest,
@@ -1603,22 +1711,49 @@ def main() -> int:
         "rebate_page": REBATE_PAGE,
     }
 
-    def write(path: str, template: str, **context) -> None:
+    sitemap: list[tuple[str, date | None]] = []
+
+    def write(path: str, template: str, meta: dict, modified: date | None = None, **context) -> None:
+        """Render one page. meta is its seo() title and description; modified
+        (default: the latest CMS posting) is its sitemap.xml date."""
         root = "../" * path.count("/")
-        page = env.get_template(template).render(root=root, current_page=path, **common, **context)
+        page = env.get_template(template).render(root=root, current_page=path, meta=meta,
+                                                 canonical=page_url(path), **common, **context)
         (OUT / path).parent.mkdir(parents=True, exist_ok=True)
         (OUT / path).write_text(page, encoding="utf-8")
+        sitemap.append((path, modified or summary["posted"]))
 
-    write("index.html", "index.html", s=summary, lead=lead, around=around, co=coinsurance, top_drugs=top_drugs,
-          has_groups=bool(groups))
-    write("coinsurance.html", "coinsurance.html", co=coinsurance)
-    write("movers.html", "movers.html", s=summary, movers=movers, n_below_floor=n_below_floor,
-          spark_quarters=SPARK_QUARTERS, effect_year=effect_year,
-          n_effect=len(with_effect))
-    write("changes.html", "changes.html", s=summary, new_codes=new_codes, dropped_codes=dropped_codes)
+    q, prior_label, first_label = quarter_label(latest_q), quarter_label(prior_q), quarter_label(quarters[0])
+    write("index.html", "index.html",
+          seo(f"Medicare Part B drug payment limits, {q}",
+              f"Medicare Part B drug payment limits for {q} ({effective_range(latest_q)}), from the CMS ASP "
+              f"pricing files: {summary['n_codes']:,} HCPCS codes, {summary['up']:,} up and {summary['down']:,} "
+              f"down from {prior_label}. Movers, biosimilars, companies and history since {first_label}."),
+          s=summary, lead=lead, around=around, co=coinsurance, top_drugs=top_drugs, has_groups=bool(groups))
+    write("coinsurance.html", "coinsurance.html",
+          seo(f"Reduced coinsurance Part B drugs, {q}",
+              f"{len(reduced):,} Medicare Part B drugs with patient coinsurance below the usual "
+              f"{plain_percent(str(usual_co))} in the CMS {q} file, and how much less the patient pays "
+              "per billing unit."),
+          co=coinsurance)
+    write("movers.html", "movers.html",
+          seo(f"Biggest Medicare Part B payment limit changes, {q}",
+              f"The {TOP_N} largest increases and decreases in Medicare Part B drug payment limits from "
+              f"{prior_label} to {q}, by percent, by dollars and by yearly effect on Medicare spending."),
+          s=summary, movers=movers, n_below_floor=n_below_floor, spark_quarters=SPARK_QUARTERS,
+          effect_year=effect_year, n_effect=len(with_effect))
+    write("changes.html", "changes.html",
+          seo(f"New and dropped HCPCS codes, {q}",
+              f"{summary['n_new']:,} HCPCS codes are new in the CMS {q} Medicare Part B payment limit file "
+              f"and {summary['n_dropped']:,} were dropped since {prior_label}."),
+          s=summary, new_codes=new_codes, dropped_codes=dropped_codes)
     for p in code_pages:
-        write(f"codes/{p['code']}.html", "code.html", p=p, co_usual=usual_co)
-    write("search.html", "search.html", codes=code_pages)
+        write(f"codes/{p['code']}.html", "code.html", code_seo(p, p["generic"], manifest["source_page"]),
+              modified=p["newest"]["cms_posted_date"], p=p, co_usual=usual_co)
+    write("search.html", "search.html",
+          seo("Search Medicare Part B drug codes",
+              f"Find any of {len(code_pages):,} HCPCS codes in the CMS ASP pricing files by code or drug name."),
+          codes=code_pages)
 
     csv_path = OUT / "downloads" / CSV_NAME
     with csv_path.open("w", encoding="utf-8", newline="") as f:
@@ -1632,22 +1767,40 @@ def main() -> int:
                         r["payment_limit_text"], r["source_file"],
                         cms_url.get(r["source_file"], ""), r["cms_posted_date"] or "",
                         r["file_version"], str(r["is_current"]).lower()])
-    write("downloads.html", "downloads.html", csv_name=CSV_NAME, csv_rows=len(rows),
+    downloads_meta = seo("Download Medicare Part B ASP payment limit history (CSV)",
+                         f"Every Medicare Part B payment limit from {first_label} to {q} in one CSV: "
+                         f"{len(rows):,} rows covering {len(code_pages):,} HCPCS codes from "
+                         f"{len({r['source_file'] for r in rows}):,} CMS files, revised versions included.")
+    downloads_meta["jsonld"] = dataset(
+        "Medicare Part B ASP payment limit history", downloads_meta["description"], page_url("downloads.html"),
+        quarters[0], latest_q, summary["posted"], ["HCPCS", "ASP", "Medicare Part B", "payment limits"],
+        "Medicare Part B payment limit per HCPCS billing unit", manifest["source_page"])
+    write("downloads.html", "downloads.html", downloads_meta, csv_name=CSV_NAME, csv_rows=len(rows),
           csv_kb=round(csv_path.stat().st_size / 1024), first_q=quarters[0],
           n_versions=len({(r["source_file"]) for r in rows}))
 
     if company_list:
         (OUT / "companies").mkdir()
-        write("companies.html", "companies.html", companies=company_list, cs=company_summary)
+        write("companies.html", "companies.html",
+              seo(f"Companies behind Medicare Part B drugs, {q}",
+                  f"{len(company_list):,} drug companies with their stock tickers, Medicare Part B spending "
+                  f"in {company_summary['year']} on the drugs only they make, and {q} payment limit changes, "
+                  "from the CMS NDC–HCPCS crosswalk."),
+              companies=company_list, cs=company_summary)
         for c in company_list:
-            write(f"companies/{c['id']}.html", "company.html", c=c, cs=company_summary,
-                  spark_quarters=SPARK_QUARTERS)
+            write(f"companies/{c['id']}.html", "company.html", company_seo(c, company_summary, q),
+                  c=c, cs=company_summary, spark_quarters=SPARK_QUARTERS)
 
     if groups:
         (OUT / "biosimilars").mkdir()
-        write("biosimilars.html", "biosimilars.html", groups=groups, groups_source=groups_source)
+        write("biosimilars.html", "biosimilars.html",
+              seo(f"Biosimilar Medicare payment limits vs. reference products, {q}",
+                  f"{len(groups)} biosimilar markets ({', '.join(g['molecule'].lower() for g in groups)}): "
+                  f"each biosimilar's Medicare Part B payment limit against its reference product, "
+                  f"from the CMS {q} file."),
+              groups=groups, groups_source=groups_source)
         for grp in groups:
-            write(f"biosimilars/{grp['slug']}.html", "biosimilar_group.html", g=grp, groups=groups,
+            write(f"biosimilars/{grp['slug']}.html", "biosimilar_group.html", group_seo(grp, q), g=grp, groups=groups,
                   chart_labels=[quarter_label(q) for q in recent_qs], groups_source=groups_source)
 
     ncr_data = {"quarter": quarter_label(latest_q), "markets": ncr_markets}
@@ -1657,12 +1810,23 @@ def main() -> int:
                   + ";\n").encode("utf-8")
     (OUT / CATALOG_SCRIPT).parent.mkdir(parents=True, exist_ok=True)
     (OUT / CATALOG_SCRIPT).write_bytes(catalog_js)
-    write(NCR_PAGE, "ncr_calculator.html", ncr_data=ncr_data, sales_q=quarter_offset(latest_q, -2),
+    write(NCR_PAGE, "ncr_calculator.html",
+          seo(f"Biosimilar net cost recovery calculator, {q}",
+              "Compare what each biosimilar and reference product recovers after acquisition cost, per "
+              f"billing unit and per dose, with CMS {q} payment limits filled in. {len(ncr_markets)} markets, "
+              f"or build your own comparison from {len(ncr_catalog):,} products."),
+          ncr_data=ncr_data, sales_q=quarter_offset(latest_q, -2),
           catalog_version=hashlib.sha256(catalog_js).hexdigest()[:10])
     ncr_codes = {p["hcpcs"] for m in ncr_markets for p in m["products"] if p["status"] == "cms"}
 
-    write("about.html", "about.html", sales_q=quarter_offset(latest_q, -2),
+    write("about.html", "about.html",
+          seo("About Rxcurve and this data",
+              f"Where Rxcurve's Medicare Part B payment limits come from (the CMS ASP pricing files, "
+              f"{first_label} to {q}), what a payment limit is, and what it does not mean."),
+          sales_q=quarter_offset(latest_q, -2),
           last_download=last_download.date(), built=date.today(), first_q=quarters[0])
+
+    write_sitemap(sitemap)
 
     n_pages = sum(1 for _ in OUT.rglob("*.html"))
     print(f"Built {OUT.relative_to(ROOT)}/ : {n_pages:,} pages, latest quarter {latest_q}")

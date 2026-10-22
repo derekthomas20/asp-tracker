@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% block title %}Reduced coinsurance, {{ latest_q|quarter }}{% endblock %}
 {% block content %}
 <span class="kicker">Inflation-adjusted coinsurance · {{ latest_q|quarter }}</span>
 <h1>{{ co.rows|length|num }} drugs carry reduced coinsurance</h1>

@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% from "macros.html" import movers_table %}
-{% block title %}Biggest movers, {{ s.latest_q|quarter }}{% endblock %}
 {% block content %}
 <span class="kicker">{{ s.prior_q|quarter }} → {{ s.latest_q|quarter }}</span>
 <h1>Quarter-over-quarter movers</h1>

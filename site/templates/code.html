@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% block title %}{{ p.code }} {{ p.name }}{% endblock %}
 {% block content %}
 {% macro change_value(pct) %}{% if pct is none %}<span class="value muted">N/A</span>{% else %}<span class="value {{ 'up' if pct > 0 else 'down' if pct < 0 else '' }}">{{ pct|arrow_percent }}</span>{% endif %}{% endmacro %}
 

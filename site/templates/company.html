@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% from "macros.html" import tickers %}
-{% block title %}{{ c.name }}{% endblock %}
 {% block content %}
 {% macro change_cell(pct, label) %}<td data-label="{{ label }}" class="num {% if pct %}{{ 'up' if pct > 0 else 'down' }}{% endif %}">{{ pct|arrow_percent if pct is not none else "–" }}</td>{% endmacro %}
 {% macro drug_cell(r) %}<td data-label="Drug"><a class="name" href="{{ root }}codes/{{ r.code }}.html">{{ r.name }}</a>{% if r.product %}<span class="cms-desc">{{ r.description }}</span>{% endif %}</td>{% endmacro %}

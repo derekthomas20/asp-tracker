@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% block title %}{{ g.molecule }} market{% endblock %}
 {% block content %}
 <p class="group-links">
   {% for o in groups %}<a href="{{ root }}biosimilars/{{ o.slug }}.html"{% if o.slug == g.slug %} aria-current="page"{% endif %}>{{ o.molecule }}</a>{% endfor %}
