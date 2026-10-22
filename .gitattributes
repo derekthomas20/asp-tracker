@@ -3,3 +3,6 @@
 reference/biosimilar_groups/** -text
 # CMS ZIPs are binary; data/manifest.json records their SHA-256.
 raw/** binary
+# Company check sources (fetch_company_sources.py): byte-for-byte, like the
+# biosimilar_groups snapshots, so SHA-256 matches the manifest.
+reference/company_sources/** -text

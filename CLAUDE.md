@@ -63,6 +63,10 @@ data/
                      packages to use, multi-dose vials, example contract
                      prices. Products come from the biosimilar groups sheet;
                      package sizes and payment limits come from asp.duckdb
+  companies.json     Hand-maintained: which company owns each NDC labeler
+                     code, patterns for each company's names in the CMS
+                     crosswalk, and stock tickers (US and home market).
+                     No numbers. Checked weekly by companies_report.py
 scripts/             Python scripts: download, load, build site
 site/                Website source: Jinja2 templates in site/templates/,
                      the stylesheet site/style.css and site/charts.js, and
@@ -74,6 +78,12 @@ reference/
   biosimilar_groups/ Snapshots of the owner's biosimilar_groups Google Sheet
                      (saved by fetch_groups.py). Never modified or deleted.
   manifest.json      One entry per snapshot: path, fetch time, SHA-256
+  company_sources/   Extracts that check data/companies.json (saved by
+                     fetch_company_sources.py; never modified or deleted):
+                     fda_labelers/ (FDA NDC Directory names per labeler
+                     code), gleif/ (legal entity and ultimate parent),
+                     sec_tickers/ (SEC ticker list)
+  company_sources_manifest.json  One entry per extract snapshot
 public/              Generated static website (output of build_site.py;
                      not committed, rebuilt from data/asp.duckdb)
 commentary/          Written notes/analysis; any figures cited must be
@@ -99,6 +109,19 @@ requirements.txt     Python dependencies (keep short)
    Practitioners by Geography and Service (2021 onward). Not downloaded:
    OPPS Addendum B (behind the AMA license page, like the AMA-gated ASP
    files) and the discarded-drug refund reports (PDF only).
+   `scripts/fetch_company_sources.py` saves small extracts of the FDA NDC
+   Directory, GLEIF and SEC's ticker list for the companies in
+   `data/companies.json` (needs the `SEC_CONTACT_EMAIL` environment
+   variable; SEC requires a contact email).
+   `scripts/companies_report.py` then checks every labeler code: it is
+   verified when GLEIF links the FDA-listed company to the company's LEI,
+   or when the owner approved it (`--approve <code>`) and FDA and GLEIF
+   have not changed since. Everything else, plus ticker problems and
+   unassigned labelers with spending, goes into one GitHub issue labelled
+   `company-review`, updated weekly. A crosswalk row is credited to the
+   company whose `cms_names` pattern matches its labeler name, else to the
+   labeler code's owner, else to nobody ("unassigned"; never guessed).
+   Skin substitutes (Q4100-Q4399) are left out.
 2. **Load** (`scripts/`): read each ZIP in `raw/` and insert rows into
    `data/asp.duckdb` with all required fields above. Loading must be
    repeatable: running it twice must not create duplicate rows.
@@ -136,15 +159,20 @@ pip install -r requirements.txt
 started by hand from the repository's **Actions** tab ("Run workflow"). It:
 
 1. Installs Python and `requirements.txt` on a fresh Linux machine.
-2. Runs `scripts/scrape.py`, `scripts/fetch_cms_data.py` and
-   `scripts/fetch_groups.py`.
+2. Runs `scripts/scrape.py`, `scripts/fetch_cms_data.py`,
+   `scripts/fetch_groups.py` and `scripts/fetch_company_sources.py`.
 3. Commits anything new in `raw/`, `data/manifest.json`,
-   `data/cms_data_manifest.json`, `reference/biosimilar_groups/` and
-   `reference/manifest.json` to `main`.
-   It stops before committing if any existing file in `raw/` or
-   `reference/biosimilar_groups/` would be changed or deleted.
+   `data/cms_data_manifest.json`, `reference/biosimilar_groups/`,
+   `reference/manifest.json`, `reference/company_sources/` and
+   `reference/company_sources_manifest.json` to `main`.
+   It stops before committing if any existing file in `raw/`,
+   `reference/biosimilar_groups/` or `reference/company_sources/` would be
+   changed or deleted.
 4. Runs `scripts/parse.py` and `scripts/build_site.py`, then publishes
    `public/` to GitHub Pages with the official Pages actions.
+5. Runs `scripts/companies_report.py` and opens, updates or closes the
+   "Company mapping needs review" issue (label `company-review`). The
+   issue gets a comment, which GitHub emails, only when its list changes.
 
 If a download step fails, files already saved are still committed and the
 site is still rebuilt from them; the run is then marked failed (red X) so
@@ -162,6 +190,8 @@ site itself.)
 both Windows and the Linux runner.
 
 One-time setup: repository **Settings → Pages → Build and deployment →
-Source: GitHub Actions**. GitHub pauses scheduled workflows in a repository
+Source: GitHub Actions**, and **Settings → Secrets and variables →
+Actions → Variables → New repository variable** named `SEC_CONTACT_EMAIL`
+holding the contact email SEC requires. GitHub pauses scheduled workflows in a repository
 with no activity for 60 days; re-enable it from the Actions tab if that
 happens.

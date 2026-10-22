@@ -15,6 +15,7 @@ permissions:
   contents: write   # commit new files in raw/ and reference/ back to main
   pages: write      # publish to GitHub Pages
   id-token: write   # required by actions/deploy-pages
+  issues: write     # open/update the "Company mapping needs review" issue
 
 # Never run two updates at once (they would both try to commit to main).
 concurrency:
@@ -58,16 +59,27 @@ jobs:
         continue-on-error: true
         run: python scripts/fetch_groups.py
 
+      # FDA NDC Directory, GLEIF and SEC extracts that check data/companies.json.
+      # SEC_CONTACT_EMAIL is a repository variable (Settings > Secrets and
+      # variables > Actions > Variables); SEC requires a contact email.
+      - name: Download company check sources (FDA, GLEIF, SEC)
+        id: companysources
+        continue-on-error: true
+        env:
+          SEC_CONTACT_EMAIL: ${{ vars.SEC_CONTACT_EMAIL }}
+        run: python scripts/fetch_company_sources.py
+
       - name: Commit new files to main
         run: |
-          git add raw data/manifest.json data/cms_data_manifest.json reference/biosimilar_groups reference/manifest.json
+          git add raw data/manifest.json data/cms_data_manifest.json reference/biosimilar_groups reference/manifest.json reference/company_sources reference/company_sources_manifest.json
           if git diff --cached --quiet; then
             echo "Nothing new to commit."
             exit 0
           fi
-          # raw/ and reference/biosimilar_groups/ only ever gain files.
-          # Stop if anything there would be changed, renamed or deleted.
-          changed=$(git diff --cached --name-status --no-renames -- raw reference/biosimilar_groups | grep -v '^A' || true)
+          # raw/, reference/biosimilar_groups/ and reference/company_sources/
+          # only ever gain files. Stop if anything there would be changed,
+          # renamed or deleted.
+          changed=$(git diff --cached --name-status --no-renames -- raw reference/biosimilar_groups reference/company_sources | grep -v '^A' || true)
           if [ -n "$changed" ]; then
             echo "STOPPED: these existing files would be changed or deleted:"
             echo "$changed"
@@ -97,12 +109,51 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+      # Lists labeler codes FDA/GLEIF can't confirm, ticker problems and
+      # unassigned labelers. Never blocks publishing the site.
+      - name: Check company mapping
+        id: companies
+        continue-on-error: true
+        run: python scripts/companies_report.py --issue-file company_review.md
+
+      # One open issue labelled company-review holds the current list. It is
+      # edited (with a comment, so GitHub emails you) only when the list
+      # changes, and closed when nothing is left.
+      - name: Open, update or close the company review issue
+        if: steps.companies.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          num=$(gh issue list --label company-review --state open --json number --jq '.[0].number // empty')
+          if [ -s company_review.md ]; then
+            new_hash=$(grep -o 'content-hash: [0-9a-f]*' company_review.md || true)
+            if [ -z "$num" ]; then
+              gh label create company-review --color FBCA04 --description "Weekly company mapping check" --force
+              gh issue create --title "Company mapping needs review" --label company-review --body-file company_review.md
+            else
+              old_hash=$(gh issue view "$num" --json body --jq .body | grep -o 'content-hash: [0-9a-f]*' || true)
+              if [ "$new_hash" != "$old_hash" ]; then
+                gh issue edit "$num" --body-file company_review.md
+                gh issue comment "$num" --body "The list changed in this week's update."
+              else
+                echo "Issue #$num is already up to date."
+              fi
+            fi
+          elif [ -n "$num" ]; then
+            gh issue close "$num" --comment "Nothing left to review."
+          else
+            echo "Nothing needs review."
+          fi
+
       - name: Report download problems
-        if: steps.scrape.outcome == 'failure' || steps.cmsdata.outcome == 'failure' || steps.groups.outcome == 'failure'
+        if: steps.scrape.outcome == 'failure' || steps.cmsdata.outcome == 'failure' || steps.groups.outcome == 'failure' || steps.companysources.outcome == 'failure' || steps.companies.outcome == 'failure'
         run: |
           echo "scrape.py: ${{ steps.scrape.outcome }}"
           echo "fetch_cms_data.py: ${{ steps.cmsdata.outcome }}"
           echo "fetch_groups.py: ${{ steps.groups.outcome }}"
+          echo "fetch_company_sources.py: ${{ steps.companysources.outcome }}"
+          echo "companies_report.py: ${{ steps.companies.outcome }}"
           echo "The site was published with the files already saved. Open the failed step above to see why."
           exit 1
     environment:

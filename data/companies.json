@@ -1,0 +1,1574 @@
+{
+  "_about": [
+    "Which company makes the drugs behind each HCPCS code. Hand-maintained; holds names and tickers, no numbers.",
+    "A CMS crosswalk row is credited to the company whose cms_names pattern matches the row's labeler name;",
+    "if no company's pattern matches, to the company that owns the NDC labeler code (first 5 digits of the NDC).",
+    "Each labeler code is checked every week against the FDA NDC Directory and GLEIF by scripts/companies_report.py.",
+    "It counts as verified when GLEIF says the FDA-listed labeler belongs to this company's lei, or when the owner",
+    "approved it (python scripts/companies_report.py --approve <code>), which records what FDA and GLEIF said then.",
+    "us_listing is checked against SEC's ticker list through sec_cik; home_listing is typed by hand.",
+    "not_manufacturers: distributors and repackagers. Their rows are ignored when deciding who makes a drug.",
+    "Skin substitutes (HCPCS Q4100-Q4399) are left out entirely."
+  ],
+  "companies": [
+    {
+      "id": "roche",
+      "name": "Roche",
+      "us_listing": {
+        "ticker": "RHHBY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "ROG",
+        "exchange": "SIX Swiss Exchange"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "Roche Holding AG",
+      "lei": "549300U41AUUVOAAOB37",
+      "cms_names": "genentech|roche|spark therapeutics",
+      "labeler_codes": [
+        {
+          "code": "50242"
+        },
+        {
+          "code": "00004"
+        }
+      ]
+    },
+    {
+      "id": "merck",
+      "name": "Merck & Co.",
+      "us_listing": {
+        "ticker": "MRK",
+        "exchange": "NYSE"
+      },
+      "home_listing": null,
+      "sec_cik": 310158,
+      "parent_legal_name": "Merck & Co., Inc.",
+      "lei": "4YV9Y5M8S0BRK1RP0397",
+      "cms_names": "merck sharp|\\bmsd\\b|cubist|schering corp",
+      "labeler_codes": [
+        {
+          "code": "00006"
+        },
+        {
+          "code": "00085"
+        },
+        {
+          "code": "67919"
+        },
+        {
+          "code": "00052"
+        }
+      ]
+    },
+    {
+      "id": "amgen",
+      "name": "Amgen",
+      "us_listing": {
+        "ticker": "AMGN",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 318154,
+      "parent_legal_name": "Amgen Inc.",
+      "lei": "62QBXGPJ34PQ72Z12S66",
+      "cms_names": "amgen|horizon|immunex",
+      "labeler_codes": [
+        {
+          "code": "55513"
+        },
+        {
+          "code": "76075"
+        },
+        {
+          "code": "75987"
+        }
+      ]
+    },
+    {
+      "id": "bms",
+      "name": "Bristol Myers Squibb",
+      "us_listing": {
+        "ticker": "BMY",
+        "exchange": "NYSE"
+      },
+      "home_listing": null,
+      "sec_cik": 14272,
+      "parent_legal_name": "Bristol-Myers Squibb Company",
+      "lei": "HLYYNH7UQUORYSJQCN42",
+      "cms_names": "squibb|bristol|celgene|juno therapeutics|mirati|karuna",
+      "labeler_codes": [
+        {
+          "code": "00003"
+        },
+        {
+          "code": "59572"
+        },
+        {
+          "code": "68817"
+        },
+        {
+          "code": "73153"
+        },
+        {
+          "code": "00015"
+        }
+      ]
+    },
+    {
+      "id": "jnj",
+      "name": "Johnson & Johnson",
+      "us_listing": {
+        "ticker": "JNJ",
+        "exchange": "NYSE"
+      },
+      "home_listing": null,
+      "sec_cik": 200406,
+      "parent_legal_name": "Johnson & Johnson",
+      "lei": "549300G0CFPGEF6X2043",
+      "cms_names": "janssen|actelion|johnson & johnson|depuy",
+      "labeler_codes": [
+        {
+          "code": "57894"
+        },
+        {
+          "code": "66215"
+        },
+        {
+          "code": "59676"
+        },
+        {
+          "code": "50458"
+        }
+      ]
+    },
+    {
+      "id": "regeneron",
+      "name": "Regeneron",
+      "us_listing": {
+        "ticker": "REGN",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 872589,
+      "parent_legal_name": "Regeneron Pharmaceuticals, Inc.",
+      "lei": "549300RCBFWIRX3HYQ56",
+      "cms_names": "regeneron",
+      "labeler_codes": [
+        {
+          "code": "61755"
+        }
+      ]
+    },
+    {
+      "id": "astrazeneca",
+      "name": "AstraZeneca",
+      "us_listing": {
+        "ticker": "AZN",
+        "exchange": "NYSE"
+      },
+      "home_listing": {
+        "ticker": "AZN",
+        "exchange": "London Stock Exchange"
+      },
+      "sec_cik": 901832,
+      "parent_legal_name": "AstraZeneca PLC",
+      "lei": "PY6ZZQWO2IZFZC3IOL08",
+      "cms_names": "astrazeneca|alexion|medimmune",
+      "labeler_codes": [
+        {
+          "code": "00310"
+        },
+        {
+          "code": "00186"
+        },
+        {
+          "code": "25682"
+        }
+      ]
+    },
+    {
+      "id": "takeda",
+      "name": "Takeda",
+      "us_listing": {
+        "ticker": "TAK",
+        "exchange": "NYSE"
+      },
+      "home_listing": {
+        "ticker": "4502",
+        "exchange": "Tokyo Stock Exchange"
+      },
+      "sec_cik": 1395064,
+      "parent_legal_name": "Takeda Pharmaceutical Company Limited",
+      "lei": null,
+      "cms_names": "takeda|\\bshire\\b|baxalta|millennium pharm|dyax",
+      "labeler_codes": [
+        {
+          "code": "00944"
+        },
+        {
+          "code": "64764"
+        },
+        {
+          "code": "63020"
+        },
+        {
+          "code": "47783"
+        },
+        {
+          "code": "54092"
+        },
+        {
+          "code": "42227"
+        },
+        {
+          "code": "64193"
+        }
+      ]
+    },
+    {
+      "id": "pfizer",
+      "name": "Pfizer",
+      "us_listing": {
+        "ticker": "PFE",
+        "exchange": "NYSE"
+      },
+      "home_listing": null,
+      "sec_cik": 78003,
+      "parent_legal_name": "Pfizer Inc.",
+      "lei": "765LHXWGK1KXCLTFYQ30",
+      "cms_names": "pfizer|seagen|seattle genetics|hospira|wyeth",
+      "labeler_codes": [
+        {
+          "code": "00069"
+        },
+        {
+          "code": "00009"
+        },
+        {
+          "code": "00008"
+        },
+        {
+          "code": "00049"
+        },
+        {
+          "code": "00046"
+        },
+        {
+          "code": "00013"
+        },
+        {
+          "code": "58394"
+        },
+        {
+          "code": "60793"
+        },
+        {
+          "code": "61703"
+        },
+        {
+          "code": "00409"
+        },
+        {
+          "code": "51144"
+        },
+        {
+          "code": "61570"
+        }
+      ]
+    },
+    {
+      "id": "csl",
+      "name": "CSL",
+      "us_listing": {
+        "ticker": "CSLLY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "CSL",
+        "exchange": "ASX"
+      },
+      "sec_cik": 1274152,
+      "parent_legal_name": "CSL LIMITED",
+      "lei": "529900ECSECK5ZDQTE14",
+      "cms_names": "csl behring|seqirus|vifor",
+      "labeler_codes": [
+        {
+          "code": "44206"
+        },
+        {
+          "code": "69911"
+        },
+        {
+          "code": "00053"
+        },
+        {
+          "code": "63833"
+        },
+        {
+          "code": "59353"
+        }
+      ]
+    },
+    {
+      "id": "daiichi",
+      "name": "Daiichi Sankyo",
+      "us_listing": {
+        "ticker": "DSNKY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "4568",
+        "exchange": "Tokyo Stock Exchange"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "Daiichi Sankyo Company, Limited",
+      "lei": null,
+      "cms_names": "daiichi|american regent|luitpold",
+      "labeler_codes": [
+        {
+          "code": "65597"
+        },
+        {
+          "code": "00517"
+        }
+      ]
+    },
+    {
+      "id": "argenx",
+      "name": "argenx",
+      "us_listing": {
+        "ticker": "ARGX",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": {
+        "ticker": "ARGX",
+        "exchange": "Euronext Brussels"
+      },
+      "sec_cik": 1697862,
+      "parent_legal_name": "argenx SE",
+      "lei": "7245009C5FZE6G9ODQ71",
+      "cms_names": "argenx",
+      "labeler_codes": [
+        {
+          "code": "73475"
+        }
+      ]
+    },
+    {
+      "id": "abbvie",
+      "name": "AbbVie",
+      "us_listing": {
+        "ticker": "ABBV",
+        "exchange": "NYSE"
+      },
+      "home_listing": null,
+      "sec_cik": 1551152,
+      "parent_legal_name": "AbbVie Inc.",
+      "lei": "FR5LCKFTG8054YNNRU85",
+      "cms_names": "abbvie|allergan|immunogen|forest lab|durata|aptalis",
+      "labeler_codes": [
+        {
+          "code": "00074"
+        },
+        {
+          "code": "00023"
+        },
+        {
+          "code": "72903"
+        },
+        {
+          "code": "57970"
+        },
+        {
+          "code": "00456"
+        },
+        {
+          "code": "58914"
+        },
+        {
+          "code": "00051"
+        }
+      ]
+    },
+    {
+      "id": "ucb",
+      "name": "UCB",
+      "us_listing": {
+        "ticker": "UCBJY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "UCB",
+        "exchange": "Euronext Brussels"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "UCB SA",
+      "lei": null,
+      "cms_names": "\\bucb\\b",
+      "labeler_codes": [
+        {
+          "code": "50474"
+        }
+      ]
+    },
+    {
+      "id": "novartis",
+      "name": "Novartis",
+      "us_listing": {
+        "ticker": "NVS",
+        "exchange": "NYSE"
+      },
+      "home_listing": {
+        "ticker": "NOVN",
+        "exchange": "SIX Swiss Exchange"
+      },
+      "sec_cik": 1114448,
+      "parent_legal_name": "Novartis AG",
+      "lei": "5493007HIVTX6SY6XD66",
+      "cms_names": "novartis|advanced accelerator|endocyte",
+      "labeler_codes": [
+        {
+          "code": "00078"
+        },
+        {
+          "code": "00065"
+        },
+        {
+          "code": "71894"
+        }
+      ]
+    },
+    {
+      "id": "sandoz",
+      "name": "Sandoz",
+      "us_listing": {
+        "ticker": "SDZNY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "SDZ",
+        "exchange": "SIX Swiss Exchange"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "Sandoz Group AG",
+      "lei": "5493000JWK6XWFEUD320",
+      "cms_names": "sandoz",
+      "labeler_codes": [
+        {
+          "code": "00781"
+        },
+        {
+          "code": "61314"
+        },
+        {
+          "code": "66758"
+        }
+      ]
+    },
+    {
+      "id": "sun",
+      "name": "Sun Pharma",
+      "us_listing": null,
+      "home_listing": {
+        "ticker": "SUNPHARMA",
+        "exchange": "NSE India"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "Sun Pharmaceutical Industries Limited",
+      "lei": "335800KJ7GE29LB4SS73",
+      "cms_names": "\\bsun pharma|\\bdusa\\b|\\btaro\\b",
+      "labeler_codes": [
+        {
+          "code": "47335"
+        },
+        {
+          "code": "62756"
+        },
+        {
+          "code": "70095"
+        },
+        {
+          "code": "67308"
+        }
+      ]
+    },
+    {
+      "id": "gsk",
+      "name": "GSK",
+      "us_listing": {
+        "ticker": "GSK",
+        "exchange": "NYSE"
+      },
+      "home_listing": {
+        "ticker": "GSK",
+        "exchange": "London Stock Exchange"
+      },
+      "sec_cik": 1131399,
+      "parent_legal_name": "GSK plc",
+      "lei": "5493000HZTVUYLO1D793",
+      "cms_names": "glaxosmithkline|\\bgsk\\b|viiv|tesaro",
+      "labeler_codes": [
+        {
+          "code": "00173"
+        },
+        {
+          "code": "49401"
+        },
+        {
+          "code": "49702"
+        },
+        {
+          "code": "58160"
+        }
+      ]
+    },
+    {
+      "id": "gilead",
+      "name": "Gilead",
+      "us_listing": {
+        "ticker": "GILD",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 882095,
+      "parent_legal_name": "Gilead Sciences, Inc.",
+      "lei": "549300WTZWR07K8MNV44",
+      "cms_names": "gilead|immunomedics|kite pharma",
+      "labeler_codes": [
+        {
+          "code": "61958"
+        },
+        {
+          "code": "71287"
+        },
+        {
+          "code": "55135"
+        }
+      ]
+    },
+    {
+      "id": "sanofi",
+      "name": "Sanofi",
+      "us_listing": {
+        "ticker": "SNY",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": {
+        "ticker": "SAN",
+        "exchange": "Euronext Paris"
+      },
+      "sec_cik": 1121404,
+      "parent_legal_name": "Sanofi",
+      "lei": "549300E9PC51EN656011",
+      "cms_names": "sanofi|genzyme|bioverativ|provention",
+      "labeler_codes": [
+        {
+          "code": "00024"
+        },
+        {
+          "code": "00088"
+        },
+        {
+          "code": "49281"
+        },
+        {
+          "code": "00955"
+        },
+        {
+          "code": "00068"
+        },
+        {
+          "code": "00075"
+        },
+        {
+          "code": "58468"
+        },
+        {
+          "code": "71104"
+        },
+        {
+          "code": "80203"
+        },
+        {
+          "code": "73650"
+        }
+      ]
+    },
+    {
+      "id": "biogen",
+      "name": "Biogen",
+      "us_listing": {
+        "ticker": "BIIB",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 875045,
+      "parent_legal_name": "Biogen Inc.",
+      "lei": "W8J5WZB5IY3K0NDQT671",
+      "cms_names": "biogen",
+      "labeler_codes": [
+        {
+          "code": "64406"
+        },
+        {
+          "code": "59627"
+        }
+      ]
+    },
+    {
+      "id": "teva",
+      "name": "Teva",
+      "us_listing": {
+        "ticker": "TEVA",
+        "exchange": "NYSE"
+      },
+      "home_listing": {
+        "ticker": "TEVA",
+        "exchange": "Tel Aviv Stock Exchange"
+      },
+      "sec_cik": 818686,
+      "parent_legal_name": "Teva Pharmaceutical Industries Limited",
+      "lei": "549300BAFGM4RC74ZJ94",
+      "cms_names": "\\bteva\\b|cephalon|actavis|sicor|\\bivax\\b|duramed",
+      "labeler_codes": [
+        {
+          "code": "00703"
+        },
+        {
+          "code": "63459"
+        },
+        {
+          "code": "00093"
+        },
+        {
+          "code": "51759"
+        },
+        {
+          "code": "00591"
+        },
+        {
+          "code": "51285"
+        },
+        {
+          "code": "00480"
+        },
+        {
+          "code": "59310"
+        },
+        {
+          "code": "45963"
+        }
+      ]
+    },
+    {
+      "id": "astellas",
+      "name": "Astellas",
+      "us_listing": {
+        "ticker": "ALPMY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "4503",
+        "exchange": "Tokyo Stock Exchange"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "Astellas Pharma Inc.",
+      "lei": null,
+      "cms_names": "astellas|iveric",
+      "labeler_codes": [
+        {
+          "code": "00469"
+        },
+        {
+          "code": "82829"
+        }
+      ]
+    },
+    {
+      "id": "lilly",
+      "name": "Eli Lilly",
+      "us_listing": {
+        "ticker": "LLY",
+        "exchange": "NYSE"
+      },
+      "home_listing": null,
+      "sec_cik": 59478,
+      "parent_legal_name": "Eli Lilly and Company",
+      "lei": "FRDRIPF3EKNDJ2CQJL29",
+      "cms_names": "\\blilly\\b",
+      "labeler_codes": [
+        {
+          "code": "00002"
+        },
+        {
+          "code": "66733"
+        }
+      ]
+    },
+    {
+      "id": "viatris",
+      "name": "Viatris",
+      "us_listing": {
+        "ticker": "VTRS",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 1792044,
+      "parent_legal_name": "Viatris Inc.",
+      "lei": "254900ZZTSW7NL773X71",
+      "cms_names": "mylan|viatris|greenstone",
+      "labeler_codes": [
+        {
+          "code": "67457"
+        },
+        {
+          "code": "72078"
+        },
+        {
+          "code": "00378"
+        },
+        {
+          "code": "49502"
+        },
+        {
+          "code": "58151"
+        },
+        {
+          "code": "51079"
+        },
+        {
+          "code": "59762"
+        }
+      ]
+    },
+    {
+      "id": "novo",
+      "name": "Novo Nordisk",
+      "us_listing": {
+        "ticker": "NVO",
+        "exchange": "NYSE"
+      },
+      "home_listing": {
+        "ticker": "NOVO B",
+        "exchange": "Nasdaq Copenhagen"
+      },
+      "sec_cik": 353278,
+      "parent_legal_name": "Novo Nordisk A/S",
+      "lei": "549300DAQ1CVT6CXN342",
+      "cms_names": "novo nordisk",
+      "labeler_codes": [
+        {
+          "code": "00169"
+        },
+        {
+          "code": "73070"
+        }
+      ]
+    },
+    {
+      "id": "fresenius",
+      "name": "Fresenius",
+      "us_listing": {
+        "ticker": "FSNUY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "FRE",
+        "exchange": "Xetra"
+      },
+      "sec_cik": 904868,
+      "parent_legal_name": "Fresenius SE & Co. KGaA",
+      "lei": "XDFJ0CYCOO1FXRFTQS51",
+      "cms_names": "fresenius kabi",
+      "labeler_codes": [
+        {
+          "code": "63323"
+        },
+        {
+          "code": "65219"
+        },
+        {
+          "code": "76045"
+        }
+      ]
+    },
+    {
+      "id": "fmc",
+      "name": "Fresenius Medical Care",
+      "us_listing": {
+        "ticker": "FMS",
+        "exchange": "NYSE"
+      },
+      "home_listing": {
+        "ticker": "FME",
+        "exchange": "Xetra"
+      },
+      "sec_cik": 1333141,
+      "parent_legal_name": "Fresenius Medical Care AG",
+      "lei": "549300CP8NY40UP89Q40",
+      "cms_names": "fresenius medical care",
+      "labeler_codes": [
+        {
+          "code": "49230"
+        }
+      ]
+    },
+    {
+      "id": "hikma",
+      "name": "Hikma",
+      "us_listing": {
+        "ticker": "HKMPY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "HIK",
+        "exchange": "London Stock Exchange"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "HIKMA PHARMACEUTICALS PUBLIC LIMITED COMPANY",
+      "lei": "549300BNS685UXH4JI75",
+      "cms_names": "hikma|west-ward|custopharm",
+      "labeler_codes": [
+        {
+          "code": "00143"
+        },
+        {
+          "code": "00054"
+        },
+        {
+          "code": "24201"
+        },
+        {
+          "code": "00641"
+        },
+        {
+          "code": "63037"
+        }
+      ]
+    },
+    {
+      "id": "baxter",
+      "name": "Baxter",
+      "us_listing": {
+        "ticker": "BAX",
+        "exchange": "NYSE"
+      },
+      "home_listing": null,
+      "sec_cik": 10456,
+      "parent_legal_name": "Baxter International Inc.",
+      "lei": "J5OIVXX3P24RJRW5CK77",
+      "cms_names": "baxter",
+      "labeler_codes": [
+        {
+          "code": "00338"
+        },
+        {
+          "code": "36000"
+        },
+        {
+          "code": "10019"
+        },
+        {
+          "code": "43066"
+        }
+      ]
+    },
+    {
+      "id": "drreddys",
+      "name": "Dr. Reddy's",
+      "us_listing": {
+        "ticker": "RDY",
+        "exchange": "NYSE"
+      },
+      "home_listing": {
+        "ticker": "DRREDDY",
+        "exchange": "NSE India"
+      },
+      "sec_cik": 1135951,
+      "parent_legal_name": "Dr. Reddy's Laboratories Limited",
+      "lei": "335800OVDPY3DVZR2798",
+      "cms_names": "reddy",
+      "labeler_codes": [
+        {
+          "code": "43598"
+        },
+        {
+          "code": "75907"
+        },
+        {
+          "code": "55111"
+        }
+      ]
+    },
+    {
+      "id": "aurobindo",
+      "name": "Aurobindo Pharma",
+      "us_listing": null,
+      "home_listing": {
+        "ticker": "AUROPHARMA",
+        "exchange": "NSE India"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "AUROBINDO PHARMA LIMITED",
+      "lei": "335800G4T2A353RDGM23",
+      "cms_names": "eugia|aurobindo|auromedics",
+      "labeler_codes": [
+        {
+          "code": "55150"
+        },
+        {
+          "code": "59651"
+        }
+      ]
+    },
+    {
+      "id": "amneal",
+      "name": "Amneal",
+      "us_listing": {
+        "ticker": "AMRX",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 1723128,
+      "parent_legal_name": "Amneal Pharmaceuticals, Inc.",
+      "lei": "549300VV176ZO5WQHZ61",
+      "cms_names": "amneal|impax",
+      "labeler_codes": [
+        {
+          "code": "70121"
+        },
+        {
+          "code": "60219"
+        },
+        {
+          "code": "65162"
+        },
+        {
+          "code": "80830"
+        },
+        {
+          "code": "69238"
+        },
+        {
+          "code": "00115"
+        }
+      ]
+    },
+    {
+      "id": "grifols",
+      "name": "Grifols",
+      "us_listing": {
+        "ticker": "GRFS",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": {
+        "ticker": "GRF",
+        "exchange": "BME Spanish Exchanges"
+      },
+      "sec_cik": 1438569,
+      "parent_legal_name": "Grifols, S.A.",
+      "lei": "959800HSSNXWRKBK4N60",
+      "cms_names": "grifols",
+      "labeler_codes": [
+        {
+          "code": "13533"
+        },
+        {
+          "code": "68516"
+        },
+        {
+          "code": "61953"
+        }
+      ]
+    },
+    {
+      "id": "alnylam",
+      "name": "Alnylam",
+      "us_listing": {
+        "ticker": "ALNY",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 1178670,
+      "parent_legal_name": "Alnylam Pharmaceuticals, Inc.",
+      "lei": "529900S3ZI14OWRJII50",
+      "cms_names": "alnylam",
+      "labeler_codes": [
+        {
+          "code": "71336"
+        }
+      ]
+    },
+    {
+      "id": "apellis",
+      "name": "Apellis",
+      "us_listing": {
+        "ticker": "APLS",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": null,
+      "parent_legal_name": "Apellis Pharmaceuticals, Inc.",
+      "lei": "254900HS0ZFRXXSB9D42",
+      "cms_names": "apellis",
+      "labeler_codes": [
+        {
+          "code": "73606"
+        }
+      ]
+    },
+    {
+      "id": "unither",
+      "name": "United Therapeutics",
+      "us_listing": {
+        "ticker": "UTHR",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 1082554,
+      "parent_legal_name": "United Therapeutics Corporation",
+      "lei": "5299005C4HZL4UWROC14",
+      "cms_names": "united therapeutics",
+      "labeler_codes": [
+        {
+          "code": "66302"
+        }
+      ]
+    },
+    {
+      "id": "adma",
+      "name": "ADMA Biologics",
+      "us_listing": {
+        "ticker": "ADMA",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 1368514,
+      "parent_legal_name": "ADMA Biologics, Inc.",
+      "lei": null,
+      "cms_names": "adma biologics",
+      "labeler_codes": [
+        {
+          "code": "69800"
+        }
+      ]
+    },
+    {
+      "id": "jazz",
+      "name": "Jazz Pharmaceuticals",
+      "us_listing": {
+        "ticker": "JAZZ",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 1232524,
+      "parent_legal_name": "Jazz Pharmaceuticals Public Limited Company",
+      "lei": "635400GAUMJCLEZRRV50",
+      "cms_names": "jazz pharm",
+      "labeler_codes": [
+        {
+          "code": "68727"
+        }
+      ]
+    },
+    {
+      "id": "asahikasei",
+      "name": "Asahi Kasei",
+      "us_listing": {
+        "ticker": "AHKSY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "3407",
+        "exchange": "Tokyo Stock Exchange"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "Asahi Kasei Corporation",
+      "lei": null,
+      "cms_names": "veloxis|asahi kasei",
+      "labeler_codes": [
+        {
+          "code": "68992"
+        }
+      ]
+    },
+    {
+      "id": "kyowakirin",
+      "name": "Kyowa Kirin",
+      "us_listing": null,
+      "home_listing": {
+        "ticker": "4151",
+        "exchange": "Tokyo Stock Exchange"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "Kyowa Kirin Co., Ltd.",
+      "lei": null,
+      "cms_names": "kyowa kirin",
+      "labeler_codes": [
+        {
+          "code": "42747"
+        }
+      ]
+    },
+    {
+      "id": "celltrion",
+      "name": "Celltrion",
+      "us_listing": null,
+      "home_listing": {
+        "ticker": "068270",
+        "exchange": "Korea Exchange"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "Celltrion, Inc.",
+      "lei": null,
+      "cms_names": "celltrion",
+      "labeler_codes": [
+        {
+          "code": "72606"
+        }
+      ]
+    },
+    {
+      "id": "merckkgaa",
+      "name": "Merck KGaA",
+      "us_listing": {
+        "ticker": "MKKGY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "MRK",
+        "exchange": "Xetra"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "Merck KGaA",
+      "lei": null,
+      "cms_names": "emd serono",
+      "labeler_codes": [
+        {
+          "code": "44087"
+        }
+      ]
+    },
+    {
+      "id": "eisai",
+      "name": "Eisai",
+      "us_listing": {
+        "ticker": "ESALY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "4523",
+        "exchange": "Tokyo Stock Exchange"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "Eisai Co., Ltd.",
+      "lei": "353800HDEE0ZYEX4QV91",
+      "cms_names": "eisai",
+      "labeler_codes": [
+        {
+          "code": "62856"
+        }
+      ]
+    },
+    {
+      "id": "ipsen",
+      "name": "Ipsen",
+      "us_listing": {
+        "ticker": "IPSEY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "IPN",
+        "exchange": "Euronext Paris"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "IPSEN",
+      "lei": null,
+      "cms_names": "ipsen",
+      "labeler_codes": [
+        {
+          "code": "15054"
+        }
+      ]
+    },
+    {
+      "id": "immunocore",
+      "name": "Immunocore",
+      "us_listing": {
+        "ticker": "IMCR",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 1671927,
+      "parent_legal_name": "Immunocore Holdings plc",
+      "lei": "213800IUE3DFS84BVN18",
+      "cms_names": "immunocore",
+      "labeler_codes": [
+        {
+          "code": "80446"
+        }
+      ]
+    },
+    {
+      "id": "organon",
+      "name": "Organon",
+      "us_listing": {
+        "ticker": "OGN",
+        "exchange": "NYSE"
+      },
+      "home_listing": null,
+      "sec_cik": 1821825,
+      "parent_legal_name": "Organon & Co.",
+      "lei": "549300AMCKY57OK2CO56",
+      "cms_names": "organon",
+      "labeler_codes": [
+        {
+          "code": "78206"
+        }
+      ]
+    },
+    {
+      "id": "lundbeck",
+      "name": "Lundbeck",
+      "us_listing": {
+        "ticker": "HLUYY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "HLUN B",
+        "exchange": "Nasdaq Copenhagen"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "H. Lundbeck A/S",
+      "lei": "5493006R4KC2OI5D3470",
+      "cms_names": "lundbeck",
+      "labeler_codes": [
+        {
+          "code": "67386"
+        }
+      ]
+    },
+    {
+      "id": "pacira",
+      "name": "Pacira BioSciences",
+      "us_listing": {
+        "ticker": "PCRX",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 1396814,
+      "parent_legal_name": "Pacira BioSciences, Inc.",
+      "lei": "549300P56LERYBDHCF69",
+      "cms_names": "pacira",
+      "labeler_codes": [
+        {
+          "code": "65250"
+        }
+      ]
+    },
+    {
+      "id": "cipla",
+      "name": "Cipla",
+      "us_listing": null,
+      "home_listing": {
+        "ticker": "CIPLA",
+        "exchange": "NSE India"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "CIPLA LIMITED",
+      "lei": "335800KMJJYEDDK82Q34",
+      "cms_names": "cipla",
+      "labeler_codes": [
+        {
+          "code": "69097"
+        },
+        {
+          "code": "80735"
+        }
+      ]
+    },
+    {
+      "id": "genmab",
+      "name": "Genmab",
+      "us_listing": {
+        "ticker": "GMAB",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": {
+        "ticker": "GMAB",
+        "exchange": "Nasdaq Copenhagen"
+      },
+      "sec_cik": 1434265,
+      "parent_legal_name": "Genmab A/S",
+      "lei": "529900MTJPDPE4MHJ122",
+      "cms_names": "genmab",
+      "labeler_codes": [
+        {
+          "code": "82705"
+        }
+      ]
+    },
+    {
+      "id": "bayer",
+      "name": "Bayer",
+      "us_listing": {
+        "ticker": "BAYRY",
+        "exchange": "OTC"
+      },
+      "home_listing": {
+        "ticker": "BAYN",
+        "exchange": "Xetra"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "Bayer Aktiengesellschaft",
+      "lei": "549300J4U55H3WP1XT59",
+      "cms_names": "\\bbayer\\b",
+      "labeler_codes": [
+        {
+          "code": "00026"
+        },
+        {
+          "code": "50419"
+        }
+      ]
+    },
+    {
+      "id": "zimmer",
+      "name": "Zimmer Biomet",
+      "us_listing": {
+        "ticker": "ZBH",
+        "exchange": "NYSE"
+      },
+      "home_listing": null,
+      "sec_cik": 1136869,
+      "parent_legal_name": "Zimmer Biomet Holdings, Inc.",
+      "lei": "2P2YLDVPES3BXQ1FRB91",
+      "cms_names": "zimmer",
+      "labeler_codes": [
+        {
+          "code": "50016"
+        }
+      ]
+    },
+    {
+      "id": "harrow",
+      "name": "Harrow",
+      "us_listing": {
+        "ticker": "HROW",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 1360214,
+      "parent_legal_name": "Harrow, Inc.",
+      "lei": "529900AP4LIRLNV8A089",
+      "cms_names": "harrow",
+      "labeler_codes": [
+        {
+          "code": "82667"
+        }
+      ]
+    },
+    {
+      "id": "icumedical",
+      "name": "ICU Medical",
+      "us_listing": {
+        "ticker": "ICUI",
+        "exchange": "Nasdaq"
+      },
+      "home_listing": null,
+      "sec_cik": 883984,
+      "parent_legal_name": "ICU Medical, Inc.",
+      "lei": "5493003NRW7LS2QZRH60",
+      "cms_names": "icu medical",
+      "labeler_codes": [
+        {
+          "code": "00990"
+        }
+      ]
+    },
+    {
+      "id": "biocon",
+      "name": "Biocon",
+      "us_listing": null,
+      "home_listing": {
+        "ticker": "BIOCON",
+        "exchange": "NSE India"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "BIOCON LIMITED",
+      "lei": "335800NK3L7QCHLOC198",
+      "cms_names": "biocon",
+      "labeler_codes": [
+        {
+          "code": "70377"
+        },
+        {
+          "code": "83257"
+        }
+      ]
+    },
+    {
+      "id": "fosun",
+      "name": "Fosun Pharma",
+      "us_listing": null,
+      "home_listing": {
+        "ticker": "2196",
+        "exchange": "Hong Kong Stock Exchange"
+      },
+      "sec_cik": null,
+      "parent_legal_name": "Shanghai Fosun Pharmaceutical (Group) Co., Ltd.",
+      "lei": null,
+      "cms_names": "fosun",
+      "labeler_codes": [
+        {
+          "code": "72266"
+        }
+      ]
+    },
+    {
+      "id": "intas",
+      "name": "Intas (Accord)",
+      "us_listing": null,
+      "home_listing": null,
+      "sec_cik": null,
+      "parent_legal_name": "Intas Pharmaceuticals Limited",
+      "lei": "335800BL323XQZHTQA07",
+      "cms_names": "\\baccord\\b",
+      "labeler_codes": [
+        {
+          "code": "16729"
+        },
+        {
+          "code": "69448"
+        }
+      ]
+    },
+    {
+      "id": "ferring",
+      "name": "Ferring",
+      "us_listing": null,
+      "home_listing": null,
+      "sec_cik": null,
+      "parent_legal_name": "Ferring Holding SA",
+      "lei": null,
+      "cms_names": "ferring",
+      "labeler_codes": [
+        {
+          "code": "55566"
+        }
+      ]
+    },
+    {
+      "id": "octapharma",
+      "name": "Octapharma",
+      "us_listing": null,
+      "home_listing": null,
+      "sec_cik": null,
+      "parent_legal_name": "Octapharma AG",
+      "lei": "506700X9Q6S71RC33221",
+      "cms_names": "octapharma",
+      "labeler_codes": [
+        {
+          "code": "68982"
+        }
+      ]
+    },
+    {
+      "id": "pharmacosmos",
+      "name": "Pharmacosmos",
+      "us_listing": null,
+      "home_listing": null,
+      "sec_cik": null,
+      "parent_legal_name": "Pharmacosmos Holding A/S",
+      "lei": "213800DUCVWCQ5924K45",
+      "cms_names": "pharmacosmos",
+      "labeler_codes": [
+        {
+          "code": "73594"
+        }
+      ]
+    },
+    {
+      "id": "meitheal",
+      "name": "Meitheal",
+      "us_listing": null,
+      "home_listing": null,
+      "sec_cik": null,
+      "parent_legal_name": "Meitheal Pharmaceuticals Inc.",
+      "lei": null,
+      "cms_names": "meitheal",
+      "labeler_codes": [
+        {
+          "code": "71288"
+        }
+      ]
+    },
+    {
+      "id": "sagent",
+      "name": "Sagent",
+      "us_listing": null,
+      "home_listing": null,
+      "sec_cik": null,
+      "parent_legal_name": "Sagent Pharmaceuticals, Inc.",
+      "lei": null,
+      "cms_names": "sagent",
+      "labeler_codes": [
+        {
+          "code": "25021"
+        },
+        {
+          "code": "70860"
+        }
+      ]
+    }
+  ],
+  "not_manufacturers": [
+    {
+      "code": "51662",
+      "name": "Henry Schein / HealthFirst",
+      "kind": "distributor"
+    },
+    {
+      "code": "00404",
+      "name": "Henry Schein",
+      "kind": "distributor"
+    },
+    {
+      "code": "52584",
+      "name": "Henry Schein",
+      "kind": "distributor"
+    },
+    {
+      "code": "50090",
+      "name": "A-S Medication Solutions",
+      "kind": "repackager"
+    },
+    {
+      "code": "68788",
+      "name": "Preferred Pharmaceuticals",
+      "kind": "repackager"
+    },
+    {
+      "code": "72789",
+      "name": "PD-Rx Pharmaceuticals",
+      "kind": "repackager"
+    },
+    {
+      "code": "43063",
+      "name": "PD-Rx Pharmaceuticals",
+      "kind": "repackager"
+    },
+    {
+      "code": "55289",
+      "name": "PD-Rx Pharmaceuticals",
+      "kind": "repackager"
+    },
+    {
+      "code": "63739",
+      "name": "McKesson (SKY Packaging)",
+      "kind": "repackager"
+    }
+  ]
+}

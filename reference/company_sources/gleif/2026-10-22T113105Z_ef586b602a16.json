@@ -1,0 +1,931 @@
+{
+ "abbvie inc": {
+  "country": "US",
+  "legal_name": "ABBVIE INC.",
+  "lei": "FR5LCKFTG8054YNNRU85",
+  "name": "AbbVie Inc.",
+  "parent_exception": "NO_KNOWN_PERSON",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "abraxis bioscience llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Abraxis BioScience, LLC"
+ },
+ "accord biopharma inc": {
+  "error": "GLEIF rejected the search (HTTP 400)",
+  "lei": null,
+  "matches": 0,
+  "name": "Accord BioPharma Inc.,"
+ },
+ "accord healthcare inc": {
+  "country": "CA",
+  "legal_name": "ACCORD HEALTHCARE INC.",
+  "lei": "636700MG9IYNWHFUB284",
+  "name": "Accord Healthcare Inc.",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "actavis pharma inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Actavis Pharma, Inc."
+ },
+ "actelion pharmaceuticals us inc": {
+  "country": "US",
+  "legal_name": "ACTELION PHARMACEUTICALS US, INC.",
+  "lei": "549300S4OAK6AYWHL542",
+  "name": "Actelion Pharmaceuticals US, Inc.",
+  "parent_exception": null,
+  "parent_lei": "549300G0CFPGEF6X2043",
+  "parent_name": "Johnson & Johnson"
+ },
+ "adma biologics inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "ADMA Biologics, Inc."
+ },
+ "alcon inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Alcon, Inc."
+ },
+ "alcon laboratories inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Alcon Laboratories, Inc."
+ },
+ "alcon research ltd": {
+  "lei": null,
+  "matches": 0,
+  "name": "Alcon Research Ltd"
+ },
+ "alexion pharmaceuticals inc": {
+  "country": "US",
+  "legal_name": "Alexion Pharmaceuticals, Inc.",
+  "lei": "M1YXUUZR0EIMU8T0EM75",
+  "name": "Alexion Pharmaceuticals, Inc.",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "allergan inc": {
+  "lei": null,
+  "matches": 2,
+  "name": "Allergan, Inc."
+ },
+ "alnylam pharmaceuticals inc": {
+  "country": "US",
+  "legal_name": "Alnylam Pharmaceuticals, Inc.",
+  "lei": "529900S3ZI14OWRJII50",
+  "name": "Alnylam Pharmaceuticals, Inc.",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "american regent inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "American Regent, Inc."
+ },
+ "amgen inc": {
+  "country": "US",
+  "legal_name": "AMGEN INC.",
+  "lei": "62QBXGPJ34PQ72Z12S66",
+  "name": "Amgen, Inc",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "amneal pharmaceuticals llc": {
+  "country": "US",
+  "legal_name": "AMNEAL PHARMACEUTICALS LLC",
+  "lei": "54930037VIXE7LRZ1M66",
+  "name": "Amneal Pharmaceuticals LLC",
+  "parent_exception": null,
+  "parent_lei": "549300VV176ZO5WQHZ61",
+  "parent_name": "AMNEAL PHARMACEUTICALS, INC."
+ },
+ "amneal pharmaceuticals ny llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Amneal Pharmaceuticals NY LLC"
+ },
+ "amneal pharmaceuticals of new york llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Amneal Pharmaceuticals of New York LLC"
+ },
+ "amneal pharmaceuticals private limited": {
+  "country": "IN",
+  "legal_name": "AMNEAL PHARMACEUTICALS PRIVATE LIMITED",
+  "lei": "33580046CGWFAEQZQU58",
+  "name": "Amneal Pharmaceuticals Private Limited",
+  "parent_exception": null,
+  "parent_lei": "549300VV176ZO5WQHZ61",
+  "parent_name": "AMNEAL PHARMACEUTICALS, INC."
+ },
+ "apellis pharmaceuticals inc": {
+  "country": "US",
+  "legal_name": "Apellis Pharmaceuticals, Inc.",
+  "lei": "254900HS0ZFRXXSB9D42",
+  "name": "Apellis Pharmaceuticals, Inc.",
+  "parent_exception": "NO_KNOWN_PERSON",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "argenx us": {
+  "lei": null,
+  "matches": 0,
+  "name": "argenx US"
+ },
+ "astellas pharma us inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Astellas Pharma US, Inc."
+ },
+ "astrazeneca pharmaceuticals lp": {
+  "lei": null,
+  "matches": 0,
+  "name": "AstraZeneca Pharmaceuticals LP"
+ },
+ "athenex pharmaceutical division llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Athenex Pharmaceutical Division, LLC."
+ },
+ "aurobindo pharma limited": {
+  "country": "IN",
+  "legal_name": "AUROBINDO PHARMA LIMITED",
+  "lei": "335800G4T2A353RDGM23",
+  "name": "Aurobindo Pharma Limited",
+  "parent_exception": "NO_KNOWN_PERSON",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "auromedics pharma llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "AuroMedics Pharma LLC"
+ },
+ "baxter healthcare company": {
+  "lei": null,
+  "matches": 0,
+  "name": "Baxter Healthcare Company"
+ },
+ "baxter healthcare corp": {
+  "lei": null,
+  "matches": 0,
+  "name": "Baxter Healthcare CORP"
+ },
+ "baxter healthcare corporation": {
+  "lei": null,
+  "matches": 0,
+  "name": "Baxter Healthcare Corporation"
+ },
+ "bayer healthcare llc": {
+  "country": "US",
+  "legal_name": "Bayer HealthCare LLC",
+  "lei": "5493006OUWQHGWPOJG16",
+  "name": "Bayer HealthCare LLC",
+  "parent_exception": null,
+  "parent_lei": "549300J4U55H3WP1XT59",
+  "parent_name": "Bayer Aktiengesellschaft"
+ },
+ "bayer healthcare pharmaceuticals inc": {
+  "country": "US",
+  "legal_name": "Bayer Healthcare Pharmaceuticals Inc.",
+  "lei": "549300DK1294PSTYZF25",
+  "name": "Bayer HealthCare Pharmaceuticals Inc.",
+  "parent_exception": null,
+  "parent_lei": "549300J4U55H3WP1XT59",
+  "parent_name": "Bayer Aktiengesellschaft"
+ },
+ "biocon biologics inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Biocon Biologics Inc"
+ },
+ "biocon pharma inc": {
+  "error": "GLEIF rejected the search (HTTP 400)",
+  "lei": null,
+  "matches": 0,
+  "name": "Biocon Pharma Inc,"
+ },
+ "biogen": {
+  "lei": null,
+  "matches": 0,
+  "name": "Biogen"
+ },
+ "biogen inc": {
+  "country": "US",
+  "legal_name": "BIOGEN INC.",
+  "lei": "W8J5WZB5IY3K0NDQT671",
+  "name": "BIOGEN INC.",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "biogen ma inc": {
+  "country": "US",
+  "legal_name": "BIOGEN MA INC.",
+  "lei": "0YSPQIT218GV0X8Z0377",
+  "name": "Biogen MA Inc.",
+  "parent_exception": null,
+  "parent_lei": "W8J5WZB5IY3K0NDQT671",
+  "parent_name": "BIOGEN INC."
+ },
+ "bioverativ therapeutics inc": {
+  "country": "US",
+  "legal_name": "Bioverativ Therapeutics Inc.",
+  "lei": "549300FG1M08D5DJ1X84",
+  "name": "Bioverativ Therapeutics Inc.",
+  "parent_exception": null,
+  "parent_lei": "549300E9PC51EN656011",
+  "parent_name": "SANOFI"
+ },
+ "celgene corporation": {
+  "country": "US",
+  "legal_name": "CELGENE CORPORATION",
+  "lei": "4SIHMF0MOSTTL8CD0X64",
+  "name": "Celgene Corporation",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "celltrion usa inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "CELLTRION USA Inc."
+ },
+ "cephalon inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Cephalon, Inc."
+ },
+ "cephalon llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Cephalon, LLC"
+ },
+ "cipla therapeutics inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Cipla Therapeutics Inc."
+ },
+ "cipla usa inc": {
+  "error": "GLEIF rejected the search (HTTP 400)",
+  "lei": null,
+  "matches": 0,
+  "name": "Cipla USA Inc.,"
+ },
+ "csl": {
+  "country": "FR",
+  "legal_name": "CSL",
+  "lei": "984500DUDD691BFF1A61",
+  "name": "CSL",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "csl behring": {
+  "lei": null,
+  "matches": 0,
+  "name": "CSL Behring"
+ },
+ "csl behring ag": {
+  "country": "CH",
+  "legal_name": "CSL Behring AG",
+  "lei": "529900K6K3Z15SKXME61",
+  "name": "CSL Behring AG",
+  "parent_exception": null,
+  "parent_lei": "529900ECSECK5ZDQTE14",
+  "parent_name": "CSL LIMITED"
+ },
+ "csl behring gmbh": {
+  "country": "DE",
+  "legal_name": "CSL Behring GmbH",
+  "lei": "529900179PEF1YBAXN42",
+  "name": "CSL Behring GmbH",
+  "parent_exception": null,
+  "parent_lei": "529900ECSECK5ZDQTE14",
+  "parent_name": "CSL LIMITED"
+ },
+ "csl behring lengnau ag": {
+  "country": "CH",
+  "legal_name": "CSL Behring Lengnau AG",
+  "lei": "506700A6A0D757I1HO17",
+  "name": "CSL Behring Lengnau AG",
+  "parent_exception": null,
+  "parent_lei": "529900ECSECK5ZDQTE14",
+  "parent_name": "CSL LIMITED"
+ },
+ "csl behring llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "CSL Behring LLC"
+ },
+ "daiichi sankyo inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Daiichi Sankyo Inc."
+ },
+ "dr reddy s laboratories inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Dr.Reddy's Laboratories Inc."
+ },
+ "dr reddy s laboratories limited": {
+  "country": "IN",
+  "legal_name": "DR. REDDY'S LABORATORIES LIMITED",
+  "lei": "335800OVDPY3DVZR2798",
+  "name": "Dr. Reddy's Laboratories Limited",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "dr reddy s laboratories ltd": {
+  "lei": null,
+  "matches": 0,
+  "name": "Dr. Reddy's Laboratories Ltd."
+ },
+ "dr reddy s labortories inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Dr. Reddy's Labortories Inc"
+ },
+ "dr reddy s labratories inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Dr. Reddy's Labratories Inc."
+ },
+ "dr reddys laboratories inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "DR.REDDYS LABORATORIES INC"
+ },
+ "dr reddys laboratories limited": {
+  "lei": null,
+  "matches": 0,
+  "name": "Dr.Reddys Laboratories Limited"
+ },
+ "eisai inc": {
+  "country": "US",
+  "legal_name": "EISAI INC.",
+  "lei": "54930081TH1JBO3ZVM22",
+  "name": "Eisai Inc.",
+  "parent_exception": null,
+  "parent_lei": "353800HDEE0ZYEX4QV91",
+  "parent_name": "エーザイ株式会社"
+ },
+ "eli lilly and company": {
+  "country": "US",
+  "legal_name": "ELI LILLY AND COMPANY",
+  "lei": "FRDRIPF3EKNDJ2CQJL29",
+  "name": "Eli Lilly and Company",
+  "parent_exception": "NATURAL_PERSONS",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "emd serono inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "EMD Serono, Inc."
+ },
+ "er squibb and sons llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "E.R. Squibb & Sons, L.L.C."
+ },
+ "eugia us llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Eugia US LLC"
+ },
+ "ferring pharmaceuticals inc": {
+  "country": "US",
+  "legal_name": "FERRING PHARMACEUTICALS INC.",
+  "lei": "9845003H1F880CB0U143",
+  "name": "Ferring Pharmaceuticals Inc.",
+  "parent_exception": "NATURAL_PERSONS",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "fosun pharma usa": {
+  "lei": null,
+  "matches": 0,
+  "name": "Fosun Pharma USA"
+ },
+ "fosun pharma usa inc": {
+  "country": "US",
+  "legal_name": "FOSUN PHARMA USA INC.",
+  "lei": "2549000CNPQ8VGYGCF32",
+  "name": "Fosun Pharma USA Inc.",
+  "parent_exception": "NO_LEI",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "fresenius kabi llc": {
+  "country": "US",
+  "legal_name": "Fresenius Kabi, LLC",
+  "lei": "529900LDGCFO7XTYGM78",
+  "name": "Fresenius Kabi, LLC",
+  "parent_exception": null,
+  "parent_lei": "XDFJ0CYCOO1FXRFTQS51",
+  "parent_name": "Fresenius SE & Co. KGaA"
+ },
+ "fresenius kabi usa llc": {
+  "country": "US",
+  "legal_name": "Fresenius Kabi USA, LLC",
+  "lei": "549300GZD52XWYI2US60",
+  "name": "Fresenius Kabi Usa, LLC",
+  "parent_exception": null,
+  "parent_lei": "XDFJ0CYCOO1FXRFTQS51",
+  "parent_name": "Fresenius SE & Co. KGaA"
+ },
+ "fresenius medical care holdings inc": {
+  "country": "US",
+  "legal_name": "FRESENIUS MEDICAL CARE HOLDINGS, INC.",
+  "lei": "XTHT88D08CLK11B3GJ82",
+  "name": "Fresenius Medical Care Holdings, Inc.",
+  "parent_exception": null,
+  "parent_lei": "549300CP8NY40UP89Q40",
+  "parent_name": "Fresenius Medical Care AG"
+ },
+ "fresenius medical care renal therapies group llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Fresenius Medical Care Renal Therapies Group, LLC"
+ },
+ "fresensius kabi usa llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Fresensius Kabi USA, LLC"
+ },
+ "genentech inc": {
+  "country": "US",
+  "legal_name": "GENENTECH, INC.",
+  "lei": "254900RA7ET1PAV4HP37",
+  "name": "Genentech, Inc.",
+  "parent_exception": "NON_PUBLIC",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "genmab us inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Genmab US, Inc."
+ },
+ "genzyme corporation": {
+  "country": "US",
+  "legal_name": "Genzyme Corporation",
+  "lei": "549300ZNNO34O8GXUE47",
+  "name": "Genzyme Corporation",
+  "parent_exception": "NON_PUBLIC",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "gilead sciences inc": {
+  "country": "US",
+  "legal_name": "GILEAD SCIENCES, INC.",
+  "lei": "549300WTZWR07K8MNV44",
+  "name": "Gilead Sciences, Inc.",
+  "parent_exception": "NO_KNOWN_PERSON",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "glaxosmithkline biologicals sa": {
+  "lei": null,
+  "matches": 0,
+  "name": "GlaxoSmithKline Biologicals SA"
+ },
+ "glaxosmithkline llc": {
+  "country": "US",
+  "legal_name": "GLAXOSMITHKLINE LLC",
+  "lei": "549300Y2PZWSSLJYI255",
+  "name": "GlaxoSmithKline LLC",
+  "parent_exception": null,
+  "parent_lei": "5493000HZTVUYLO1D793",
+  "parent_name": "GSK PLC"
+ },
+ "grifols usa llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "GRIFOLS USA, LLC"
+ },
+ "harrow eye llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Harrow Eye, LLC"
+ },
+ "hikma pharmaceuticals usa": {
+  "lei": null,
+  "matches": 0,
+  "name": "Hikma Pharmaceuticals USA"
+ },
+ "hikma pharmaceuticals usa inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "HIKMA PHARMACEUTICALS USA INC."
+ },
+ "hikma pharmacuticals usa usa inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Hikma Pharmacuticals USA USA Inc."
+ },
+ "hikma pharmceuticals usa inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Hikma Pharmceuticals USA Inc."
+ },
+ "horizon therapeutics usa inc": {
+  "country": "US",
+  "legal_name": "HORIZON THERAPEUTICS USA, INC.",
+  "lei": "254900IS87RLPXY88S03",
+  "name": "Horizon Therapeutics USA, Inc.",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "hospira inc": {
+  "country": "US",
+  "legal_name": "HOSPIRA, INC.",
+  "lei": "549300M7WX7DCIC49939",
+  "name": "Hospira, Inc.",
+  "parent_exception": null,
+  "parent_lei": "765LHXWGK1KXCLTFYQ30",
+  "parent_name": "PFIZER INC."
+ },
+ "icu medical inc": {
+  "country": "US",
+  "legal_name": "ICU MEDICAL, INC.",
+  "lei": "5493003NRW7LS2QZRH60",
+  "name": "ICU Medical Inc.",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "imclone llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "ImClone LLC"
+ },
+ "immunocore commercial llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Immunocore Commercial LLC"
+ },
+ "immunogen inc": {
+  "country": "US",
+  "legal_name": "ImmunoGen, Inc.",
+  "lei": "54930084U0R1OP766Y02",
+  "name": "ImmunoGen, Inc.",
+  "parent_exception": null,
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "ipsen biopharmaceuticals inc": {
+  "country": "US",
+  "legal_name": "Ipsen Biopharmaceuticals, Inc.",
+  "lei": "549300WDTI4JRWKW4U30",
+  "name": "Ipsen Biopharmaceuticals, Inc.",
+  "parent_exception": null,
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "janssen biotech inc": {
+  "country": "US",
+  "legal_name": "Janssen Biotech, Inc.",
+  "lei": "549300N03XQR27RJXA70",
+  "name": "Janssen Biotech, Inc",
+  "parent_exception": null,
+  "parent_lei": "549300G0CFPGEF6X2043",
+  "parent_name": "Johnson & Johnson"
+ },
+ "janssen pharmaceuticals inc": {
+  "country": "US",
+  "legal_name": "Janssen Pharmaceuticals, Inc.",
+  "lei": "549300KW7Q8FTDG2UO48",
+  "name": "Janssen Pharmaceuticals, Inc",
+  "parent_exception": null,
+  "parent_lei": "549300G0CFPGEF6X2043",
+  "parent_name": "Johnson & Johnson"
+ },
+ "janssen products lp": {
+  "lei": null,
+  "matches": 0,
+  "name": "Janssen Products LP"
+ },
+ "jazz pharmaceuticals inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Jazz Pharmaceuticals, Inc."
+ },
+ "juno therapeutics inc": {
+  "country": "US",
+  "legal_name": "JUNO THERAPEUTICS, INC.",
+  "lei": "5493004CAOW3ZGG2CV25",
+  "name": "Juno Therapeutics, Inc.",
+  "parent_exception": null,
+  "parent_lei": "HLYYNH7UQUORYSJQCN42",
+  "parent_name": "BRISTOL-MYERS SQUIBB COMPANY"
+ },
+ "kite pharma inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Kite Pharma, Inc."
+ },
+ "kyowa kirin inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Kyowa Kirin, Inc."
+ },
+ "lundbeck pharmaceuticals llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Lundbeck Pharmaceuticals LLC"
+ },
+ "meitheal pharmaceuticals inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Meitheal Pharmaceuticals Inc."
+ },
+ "merck sharp and dohme llc": {
+  "country": "US",
+  "legal_name": "Merck Sharp & Dohme LLC",
+  "lei": "5493000ND1PV2SKBAY41",
+  "name": "Merck Sharp & Dohme LLC",
+  "parent_exception": null,
+  "parent_lei": "4YV9Y5M8S0BRK1RP0397",
+  "parent_name": "MERCK & CO., INC."
+ },
+ "mylan institutional inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Mylan Institutional Inc."
+ },
+ "mylan institutional llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Mylan Institutional LLC"
+ },
+ "mylan pharmaceuticals inc": {
+  "country": "US",
+  "legal_name": "Mylan Pharmaceuticals Inc.",
+  "lei": "894500ZQWJQXJPI6B828",
+  "name": "Mylan Pharmaceuticals Inc.",
+  "parent_exception": null,
+  "parent_lei": "254900ZZTSW7NL773X71",
+  "parent_name": "VIATRIS INC."
+ },
+ "mylaninstitutional inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "MylanInstitutional Inc."
+ },
+ "novartis innovative technologies inc": {
+  "country": "US",
+  "legal_name": "NOVARTIS INNOVATIVE TECHNOLOGIES INC.",
+  "lei": "549300JMT0XZSYVI5K29",
+  "name": "Novartis Innovative Technologies Inc.",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "novartis pharmaceuticals corporation": {
+  "lei": null,
+  "matches": 0,
+  "name": "Novartis Pharmaceuticals Corporation"
+ },
+ "novo nordisk": {
+  "lei": null,
+  "matches": 0,
+  "name": "Novo Nordisk"
+ },
+ "novo nordisk pharma inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Novo Nordisk Pharma, Inc."
+ },
+ "novo nordisk pharmaceutical industries lp": {
+  "lei": null,
+  "matches": 0,
+  "name": "Novo Nordisk Pharmaceutical Industries, LP"
+ },
+ "octapharma usa inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Octapharma USA Inc"
+ },
+ "onyx pharmaceuticals inc": {
+  "country": "US",
+  "legal_name": "Onyx Pharmaceuticals, Inc.",
+  "lei": "549300K47GO90N8J4853",
+  "name": "Onyx Pharmaceuticals, Inc.",
+  "parent_exception": "NO_LEI",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "organon llc": {
+  "country": "US",
+  "legal_name": "ORGANON LLC",
+  "lei": "549300MRYQCLVXIJ7P86",
+  "name": "Organon LLC",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "pacira pharmaceuticals inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Pacira Pharmaceuticals, Inc."
+ },
+ "pfizer laboratories div pfizer inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Pfizer Laboratories Div Pfizer Inc"
+ },
+ "pharmacia and upjohn company llc": {
+  "country": "US",
+  "legal_name": "PHARMACIA & UPJOHN COMPANY LLC",
+  "lei": "549300B572R8LJWPTN08",
+  "name": "Pharmacia & Upjohn Company LLC",
+  "parent_exception": null,
+  "parent_lei": "765LHXWGK1KXCLTFYQ30",
+  "parent_name": "PFIZER INC."
+ },
+ "pharmacosmos therapeutics inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Pharmacosmos Therapeutics Inc."
+ },
+ "provention bio inc": {
+  "country": "US",
+  "legal_name": "Provention Bio, Inc.",
+  "lei": "5493003LM26XAVJKLD34",
+  "name": "Provention Bio, Inc.",
+  "parent_exception": "NON_PUBLIC",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "regeneron pharmaceuticals inc": {
+  "country": "US",
+  "legal_name": "REGENERON PHARMACEUTICALS, INC.",
+  "lei": "549300RCBFWIRX3HYQ56",
+  "name": "Regeneron Pharmaceuticals, Inc",
+  "parent_exception": "NO_KNOWN_PERSON",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "roerig": {
+  "lei": null,
+  "matches": 0,
+  "name": "Roerig"
+ },
+ "sagent pharmaceticals": {
+  "lei": null,
+  "matches": 0,
+  "name": "Sagent Pharmaceticals"
+ },
+ "sagent pharmaceuticals": {
+  "lei": null,
+  "matches": 0,
+  "name": "Sagent Pharmaceuticals"
+ },
+ "sandoz inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "SANDOZ INC"
+ },
+ "sanofi aventis us llc": {
+  "country": "US",
+  "legal_name": "Sanofi-Aventis U.S. LLC",
+  "lei": "549300WE53B781AKQU61",
+  "name": "sanofi-aventis U.S. LLC",
+  "parent_exception": "NON_PUBLIC",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "sanofi vaccines us inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Sanofi Vaccines US Inc."
+ },
+ "seagen inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "SEAGEN INC."
+ },
+ "sun pharmaceutical industries inc": {
+  "country": "US",
+  "legal_name": "Sun Pharmaceutical Industries, Inc.",
+  "lei": "549300O35IPYFPHHP906",
+  "name": "SUN PHARMACEUTICAL INDUSTRIES, INC.",
+  "parent_exception": null,
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "sun pharmaceutical industries limited": {
+  "country": "IN",
+  "legal_name": "SUN PHARMACEUTICAL INDUSTRIES LIMITED",
+  "lei": "335800KJ7GE29LB4SS73",
+  "name": "Sun Pharmaceutical Industries Limited",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "takeda pharmaceuticals amercia inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Takeda Pharmaceuticals Amercia, Inc."
+ },
+ "takeda pharmaceuticals america inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "TAKEDA PHARMACEUTICALS AMERICA, INC."
+ },
+ "teva parenteral medicines inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Teva Parenteral Medicines, Inc."
+ },
+ "teva pharmaceuticals inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Teva Pharmaceuticals, Inc."
+ },
+ "teva pharmaceuticals usa inc": {
+  "country": "US",
+  "legal_name": "TEVA PHARMACEUTICALS USA, INC.",
+  "lei": "54930009E6JHZUIRO925",
+  "name": "Teva Pharmaceuticals USA, Inc.",
+  "parent_exception": null,
+  "parent_lei": "549300BAFGM4RC74ZJ94",
+  "parent_name": "טבע תעשיות פרמצבטיות בע\"מ"
+ },
+ "teva respiratory llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Teva Respiratory, LLC"
+ },
+ "teva women s health llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Teva Women's Health LLC"
+ },
+ "ucb inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "UCB, Inc."
+ },
+ "united therapeutics corporation": {
+  "country": "US",
+  "legal_name": "UNITED THERAPEUTICS CORPORATION",
+  "lei": "5299005C4HZL4UWROC14",
+  "name": "United Therapeutics Corporation",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "veloxis pharmaceuticals inc": {
+  "country": "US",
+  "legal_name": "VELOXIS PHARMACEUTICALS, INC.",
+  "lei": "549300YD7MO7TUE8GX79",
+  "name": "Veloxis Pharmaceuticals, Inc",
+  "parent_exception": "NON_CONSOLIDATING",
+  "parent_lei": null,
+  "parent_name": null
+ },
+ "viatris specialty llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Viatris Specialty LLC"
+ },
+ "vifor international inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Vifor (International), Inc."
+ },
+ "viiv healthcare company": {
+  "lei": null,
+  "matches": 0,
+  "name": "ViiV Healthcare Company"
+ },
+ "west ward pharmaceuticals corp": {
+  "lei": null,
+  "matches": 0,
+  "name": "West-Ward Pharmaceuticals Corp"
+ },
+ "wyeth biopharma division of wyeth pharmaceuticals llc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Wyeth BioPharma Division of Wyeth Pharmaceuticals LLC"
+ },
+ "wyeth pharmaceuticals llc a subsidiary of pfizer inc": {
+  "lei": null,
+  "matches": 0,
+  "name": "Wyeth Pharmaceuticals LLC, a subsidiary of Pfizer Inc."
+ }
+}

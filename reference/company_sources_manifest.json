@@ -1,0 +1,38 @@
+{
+  "sources": {
+    "fda_labelers": {
+      "url": "https://www.accessdata.fda.gov/cder/ndctext.zip",
+      "snapshots": [
+        {
+          "local_path": "reference/company_sources/fda_labelers/2026-10-22T112240Z_dce6fd575cdd.tsv",
+          "fetched_at": "2026-10-22T11:22:40+00:00",
+          "sha256": "dce6fd575cddc2f183f6d09f422077938c362b25343be1074ff0aeef1b44353f",
+          "size_bytes": 9672,
+          "source_zip_sha256": "da03470080a4b902bd73b1a8046cb28438c760e94ce91a93a4b93c96e110392b"
+        }
+      ]
+    },
+    "sec_tickers": {
+      "url": "https://www.sec.gov/files/company_tickers_exchange.json",
+      "snapshots": [
+        {
+          "local_path": "reference/company_sources/sec_tickers/2026-10-22T112408Z_36f06fcd0a61.json",
+          "fetched_at": "2026-10-22T11:24:08+00:00",
+          "sha256": "36f06fcd0a61c96dfeb3add7b37e5fdc445b6b01bc2aeb6861868e279bed0c3c",
+          "size_bytes": 4858
+        }
+      ]
+    },
+    "gleif": {
+      "url": "https://api.gleif.org/api/v1/lei-records",
+      "snapshots": [
+        {
+          "local_path": "reference/company_sources/gleif/2026-10-22T113105Z_ef586b602a16.json",
+          "fetched_at": "2026-10-22T11:31:05+00:00",
+          "sha256": "ef586b602a16feca3bd35708c2c0d57a422243ecd8ba2c8d2939f44732921911",
+          "size_bytes": 23063
+        }
+      ]
+    }
+  }
+}
