@@ -1,6 +1,6 @@
 """Save the outside sources that check data/companies.json.
 
-Three free sources, each saved as a small extract under
+Four extracts from three free sources, each saved as a small extract under
 reference/company_sources/<source>/<UTC date and time>_<first 12 of SHA-256>.<ext>
 and recorded in reference/company_sources_manifest.json. A new snapshot is
 written only when the extract changed. Snapshots are never changed or
@@ -10,6 +10,11 @@ deleted.
                 the company names FDA lists under each labeler code in
                 companies.json. The full ~11 MB ZIP changes daily, so only
                 the rows for those codes are kept (its SHA-256 is recorded).
+  fda_packages  The same FDA ZIP's package.txt: the 10-digit NDC FDA lists for
+                each NDC in the newest CMS NDC-HCPCS crosswalk (CMS writes
+                NDCs in the 11-digit 5-4-2 form, and the 10-digit form can't
+                be worked out from it), with FDA's package description.
+                Read from the crosswalk ZIP in raw/, so run scrape.py first.
   gleif         GLEIF API (https://api.gleif.org): for each of those FDA
                 names, its Legal Entity Identifier and ultimate parent.
                 About 3 requests per name at GLEIF's limit of 60 a minute,
@@ -58,6 +63,8 @@ GLEIF_PAUSE_SECONDS = 1.05  # GLEIF allows 60 requests a minute
 TIMEOUT_SECONDS = 120
 
 FDA_COLUMNS = {"PRODUCTNDC", "LABELERNAME"}
+FDA_PACKAGE_COLUMNS = {"NDCPACKAGECODE", "PACKAGEDESCRIPTION", "STARTMARKETINGDATE", "ENDMARKETINGDATE"}
+ASP_MANIFEST = ROOT / "data" / "manifest.json"
 
 
 def get(url: str, headers: dict | None = None) -> bytes:
@@ -90,21 +97,37 @@ def save_snapshot(manifest: dict, source: str, url: str, data: bytes, ext: str, 
     print(f"  {source}: saved {path.relative_to(ROOT)} ({len(data):,} bytes)")
 
 
+_fda_zip: dict[str, tuple[str, dict[str, bytes]]] = {}
+
+
+def fda_files() -> tuple[str, dict[str, bytes]]:
+    """(SHA-256 of the FDA NDC Directory ZIP, {member: bytes}), downloaded
+    once per run and shared by fda_labelers and fda_packages."""
+    if not _fda_zip:
+        with tempfile.TemporaryFile() as tmp:
+            tmp.write(get(FDA_URL))
+            tmp.seek(0)
+            zip_sha256 = hashlib.sha256(tmp.read()).hexdigest()
+            tmp.seek(0)
+            with zipfile.ZipFile(tmp) as z:
+                _fda_zip["zip"] = (zip_sha256, {m: z.read(m) for m in ("product.txt", "package.txt")})
+    return _fda_zip["zip"]
+
+
+def fda_reader(member: str, columns: set[str]) -> csv.DictReader:
+    # The files are not UTF-8 (they have Windows-1252 characters such as ®).
+    text = fda_files()[1][member].decode("cp1252")
+    reader = csv.DictReader(io.StringIO(text), delimiter="\t", quoting=csv.QUOTE_NONE)
+    missing = columns - set(reader.fieldnames or [])
+    if missing:
+        raise RuntimeError(f"FDA {member} has no {sorted(missing)} column; the format changed")
+    return reader
+
+
 def fetch_fda(doc: dict, manifest: dict) -> None:
     """Company names FDA lists under each labeler code in companies.json."""
-    with tempfile.TemporaryFile() as tmp:
-        tmp.write(get(FDA_URL))
-        tmp.seek(0)
-        zip_sha256 = hashlib.sha256(tmp.read()).hexdigest()
-        tmp.seek(0)
-        with zipfile.ZipFile(tmp) as z:
-            raw = z.read("product.txt")
-    # The file is not UTF-8 (it has Windows-1252 characters such as ®).
-    text = raw.decode("cp1252")
-    reader = csv.DictReader(io.StringIO(text), delimiter="\t", quoting=csv.QUOTE_NONE)
-    missing = FDA_COLUMNS - set(reader.fieldnames or [])
-    if missing:
-        raise RuntimeError(f"FDA product.txt has no {sorted(missing)} column; the format changed")
+    zip_sha256 = fda_files()[0]
+    reader = fda_reader("product.txt", FDA_COLUMNS)
     wanted = set(mapped_codes(doc))
     names: set[tuple[str, str]] = set()
     for row in reader:
@@ -121,6 +144,61 @@ def fetch_fda(doc: dict, manifest: dict) -> None:
     print(f"  fda_labelers: {len({c for c, _ in names})} of {len(wanted)} codes have FDA listings")
     save_snapshot(manifest, "fda_labelers", FDA_URL, out.getvalue().encode("utf-8"), "tsv",
                   {"source_zip_sha256": zip_sha256})
+
+
+def crosswalk_ndcs() -> tuple[str, set[str]]:
+    """(local path, NDCs) of the newest version of the newest quarter's CMS
+    NDC-HCPCS crosswalk in raw/, read the same way parse.py reads it."""
+    import parse  # scripts/parse.py; imported here so the other sources don't need it
+    files = json.loads(ASP_MANIFEST.read_text(encoding="utf-8"))["files"]
+    crosswalks = [e for e in files if e["category"] == "crosswalk"]
+    if not crosswalks:
+        raise RuntimeError("no crosswalk in data/manifest.json; run scrape.py first")
+    newest = max(crosswalks, key=lambda e: (e["effective_period"], e["version"]))
+    ndcs = set()
+    with zipfile.ZipFile(ROOT / newest["local_path"]) as zf:
+        load, _ = parse.members_to_load(zf, "crosswalk")
+        for member, spec in load:
+            try:
+                ndcs |= {r["ndc"] for r in parse.parse_csv(zf.read(member), spec).rows}
+            except parse.FormatError as err:
+                raise RuntimeError(f"{newest['local_path']} -> {member}: {err}") from err
+    return newest["local_path"], ndcs
+
+
+def fda_to_11(ndc10: str) -> str | None:
+    """FDA's 10-digit NDC (4-4-2, 5-3-2 or 5-4-1) -> the 11-digit 5-4-2 form
+    CMS uses, by adding a leading zero to the short segment."""
+    parts = ndc10.split("-")
+    if len(parts) != 3 or not all(p.isdigit() for p in parts):
+        return None
+    if tuple(len(p) for p in parts) not in ((4, 4, 2), (5, 3, 2), (5, 4, 1)):
+        return None
+    return "-".join(p.zfill(n) for p, n in zip(parts, (5, 4, 2)))
+
+
+def fetch_fda_packages(manifest: dict) -> None:
+    """The FDA 10-digit NDC and package description for each crosswalk NDC."""
+    crosswalk, wanted = crosswalk_ndcs()
+    zip_sha256 = fda_files()[0]
+    found: dict[str, list[dict]] = {}
+    for row in fda_reader("package.txt", FDA_PACKAGE_COLUMNS):
+        ndc10 = row["NDCPACKAGECODE"].strip()
+        ndc11 = fda_to_11(ndc10)
+        if ndc11 is None:
+            raise RuntimeError(f"FDA package NDC {ndc10!r} is not in 4-4-2, 5-3-2 or 5-4-1 form")
+        if ndc11 in wanted:
+            found.setdefault(ndc11, []).append(row)
+    out = io.StringIO()
+    out.write("ndc_11\tndc_10\tpackage_description\tstart_marketing\tend_marketing\n")
+    for ndc11, rows in sorted(found.items()):
+        for row in sorted(rows, key=lambda r: r["NDCPACKAGECODE"]):
+            desc = " ".join(row["PACKAGEDESCRIPTION"].split())
+            out.write(f"{ndc11}\t{row['NDCPACKAGECODE'].strip()}\t{desc}\t"
+                      f"{row['STARTMARKETINGDATE'].strip()}\t{row['ENDMARKETINGDATE'].strip()}\n")
+    print(f"  fda_packages: {len(found):,} of {len(wanted):,} NDCs in {crosswalk} are in the FDA NDC Directory")
+    save_snapshot(manifest, "fda_packages", FDA_URL, out.getvalue().encode("utf-8"), "tsv",
+                  {"source_zip_sha256": zip_sha256, "crosswalk": crosswalk})
 
 
 def gleif_get(path: str) -> dict | None:
@@ -205,7 +283,7 @@ def fetch_sec(doc: dict, manifest: dict) -> None:
     save_snapshot(manifest, "sec_tickers", SEC_URL, data, "json")
 
 
-SOURCES = ("fda_labelers", "gleif", "sec_tickers")
+SOURCES = ("fda_labelers", "fda_packages", "gleif", "sec_tickers")
 
 
 def main() -> int:
@@ -221,6 +299,7 @@ def main() -> int:
         manifest = json.loads(SOURCES_MANIFEST.read_text(encoding="utf-8"))
 
     steps = {"fda_labelers": lambda: fetch_fda(doc, manifest),
+             "fda_packages": lambda: fetch_fda_packages(manifest),
              "gleif": lambda: fetch_gleif(manifest),
              "sec_tickers": lambda: fetch_sec(doc, manifest)}
     failed = []

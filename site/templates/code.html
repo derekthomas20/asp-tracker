@@ -145,13 +145,14 @@
 
 <h2>Products billed under {{ p.code }}</h2>
 {% if p.products %}
-<p class="note">From the {{ latest_q|quarter }} NDC–HCPCS crosswalk. “Limit / pkg” is the {{ latest_q|quarter }} payment limit times the billing units in one package.</p>
+<p class="note">From the {{ latest_q|quarter }} NDC–HCPCS crosswalk. “Limit / pkg” is the {{ latest_q|quarter }} payment limit times the billing units in one package.
+CMS lists each NDC in the 11-digit 5-4-2 form; claims use the same 11 digits without hyphens. The 10-digit NDC on the package and its description are from the FDA NDC Directory, where FDA lists the NDC.</p>
 {% macro product_rows(items) %}
   {% for n in items %}
   <tr>
-    <td data-label="Product" class="strong">{{ n.drug_name or "—" }}</td>
+    <td data-label="Product"><span class="strong">{{ n.drug_name or "—" }}</span>{% for f in n.fda %}<span class="cms-desc">{{ f.package_description }}</span>{% endfor %}</td>
     <td data-label="Labeler">{{ n.labeler_name or "—" }}</td>
-    <td data-label="NDC">{{ n.ndc }}</td>
+    <td data-label="NDC">{{ n.ndc }}{% if n.ndc_claim %}<span class="cms-desc">Claim: {{ n.ndc_claim }}</span>{% endif %}{% for f in n.fda %}<span class="cms-desc">FDA 10-digit: {{ f.ndc_10 }}</span>{% endfor %}{% if n.ndc_claim and not n.fda %}<span class="cms-desc">Not in the FDA NDC Directory</span>{% endif %}</td>
     <td data-label="Units / pkg" class="num">{{ n.bill_units_pkg or "—" }}</td>
     <td data-label="Limit / pkg" class="num strong">{{ n.per_package|money }}</td>
   </tr>
@@ -169,6 +170,23 @@
 {% endif %}
 {% else %}
 <p class="muted">No NDCs mapped to this code in the {{ latest_q|quarter }} crosswalk.</p>
+{% endif %}
+
+{% if p.doses %}
+<h3>Billing units for an example dose</h3>
+{% for d in p.doses %}
+<p>{{ d.source }}.
+{% if d.basis == "per kg" %}{{ d.value|plain_num }} {{ d.measure }}/kg for a patient weighing {{ d.weight|plain_num }} kg is {{ d.amount|plain_num }} {{ d.measure }}{% elif d.basis == "per m2" %}{{ d.value|plain_num }} {{ d.measure }}/m² for a patient with {{ d.bsa|plain_num }} m² body surface area is {{ d.amount|plain_num }} {{ d.measure }}{% else %}A dose of {{ d.amount|plain_num }} {{ d.measure }}{% endif %}:
+<strong>{{ d.units|plain_num }} billing unit{{ "s" if d.units != 1 }}</strong> of {{ p.dosage }}{% if d.rounded %} (rounded up to whole units){% endif %}{% if d.at_limit is not none %}, or {{ d.at_limit|cents }} at the {{ latest_q|quarter }} payment limit{% endif %}.</p>
+{% endfor %}
+<p class="note">An example only, using the default dose of the <a href="{{ root }}{{ ncr_page|replace('index.html', '') }}">net cost recovery calculator</a>{% if p.doses|selectattr("basis", "ne", "flat")|list %} and its example patient{% endif %}. Dose by the patient’s actual prescription and the full label.</p>
+{% endif %}
+
+{% if p.usage and p.usage.discarded %}
+<h3>JW and JZ modifiers</h3>
+<p class="note">CMS reports discarded units for {{ p.code }} in its {{ p.usage.discarded.year }} Discarded Drug Units file, so at least some of it is given from single-dose containers.
+For drug from a single-dose container or package, Medicare requires the JW modifier on a separate claim line for the amount discarded, and, since July 1, 2023, the JZ modifier when none was discarded.
+See CMS’s <a href="{{ jw_faq }}">JW and JZ modifier FAQs</a>.</p>
 {% endif %}
 
 <h2>Every quarter</h2>

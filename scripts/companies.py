@@ -157,6 +157,20 @@ def load_fda_labelers() -> dict[str, list[str]] | None:
     return out
 
 
+def load_fda_packages() -> dict[str, list[dict]] | None:
+    """11-digit 5-4-2 NDC (as CMS writes it) -> the FDA NDC Directory
+    packages it stands for: [{ndc_10, package_description, ...}]. Usually
+    one; more than one when two 10-digit NDCs pad to the same 11 digits."""
+    path = latest_snapshot("fda_packages")
+    if path is None:
+        return None
+    out: dict[str, list[dict]] = {}
+    with path.open(encoding="utf-8", newline="") as f:
+        for row in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
+            out.setdefault(row["ndc_11"], []).append(row)
+    return out
+
+
 def load_gleif() -> dict[str, dict] | None:
     """Normalized company name -> what GLEIF says about it (see fetch_company_sources.py)."""
     path = latest_snapshot("gleif")

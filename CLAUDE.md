@@ -81,7 +81,9 @@ reference/
   company_sources/   Extracts that check data/companies.json (saved by
                      fetch_company_sources.py; never modified or deleted):
                      fda_labelers/ (FDA NDC Directory names per labeler
-                     code), gleif/ (legal entity and ultimate parent),
+                     code), fda_packages/ (FDA 10-digit NDC and package
+                     description for each NDC in the newest CMS crosswalk;
+                     shown on code pages), gleif/ (legal entity and ultimate parent),
                      sec_tickers/ (SEC ticker list)
   company_sources_manifest.json  One entry per extract snapshot
 public/              Generated static website (output of build_site.py;

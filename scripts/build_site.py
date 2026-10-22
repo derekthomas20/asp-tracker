@@ -13,7 +13,11 @@ Pages written to public/:
     biosimilars/X.html  the owner's sheet (verified rows only); prices from CMS;
                         Medicare spending, claims share and states from the
                         data.cms.gov usage files
-    codes/XXXXX.html    one page per HCPCS code: chart, products (NDCs),
+    codes/XXXXX.html    one page per HCPCS code: chart, products (NDCs in
+                        CMS, claim and FDA 10-digit forms), an example dose
+                        in billing units (calculator markets with an FDA
+                        label dose), a JW/JZ note (codes in CMS's discarded
+                        drug file),
                         Medicare usage by year (data.cms.gov files),
                         table, CMS source links
     search.html         find a code by code or drug name
@@ -95,6 +99,8 @@ IRA_LIST = 8  # rows in the home page reduced coinsurance list
 # reference product is the thick navy line.
 GROUP_SHADES = ["--color-teal", "--color-teal-light", "--color-series-3",
                 "--color-series-4", "--color-series-5", "--color-series-6"]
+JW_FAQ = ("https://www.cms.gov/medicare/medicare-fee-for-service-payment/hospitaloutpatientpps/"
+          "downloads/jw-modifier-faqs.pdf")
 SITE_URL = "https://therxcurve.com/"  # canonical addresses, Open Graph links and sitemap.xml
 REBATE_PAGE = ("https://www.cms.gov/initiatives/medicare-prescription-drug-affordability/"
                "overview/medicare-inflation-rebate-program")
@@ -1168,6 +1174,41 @@ def build_ncr(groups: list[dict], packages: dict[str, set], warn) -> list[dict]:
     return markets
 
 
+def dose_examples(markets: list[dict]) -> dict[str, list[dict]]:
+    """A worked dose for code pages, for each code in a calculator market
+    whose default dose names its FDA label in data/ncr_markets.json (doses
+    marked as prototype defaults are left out). The dose is turned into
+    billing units of the code's own CMS unit, rounded up to whole units as
+    the calculator does. {code: [{source, basis, value, weight, bsa, unit}]}."""
+    with NCR_MARKETS.open(encoding="utf-8") as f:
+        config = {m["id"]: m for m in json.load(f, parse_float=Decimal)["markets"]}
+    out: dict[str, list[dict]] = {}
+    for mk in markets:
+        cfg = config[mk["id"]]
+        if "label" not in cfg["dose_source"].lower():
+            continue
+        dose = cfg["dose"]
+        for code in sorted({p["hcpcs"] for p in mk["products"]}):
+            out.setdefault(code, []).append({
+                "source": cfg["dose_source"], "basis": dose["basis"], "value": Decimal(dose["value"]),
+                "weight": Decimal(dose["weight_kg"]), "bsa": Decimal(dose["bsa_m2"]), "measure": mk["unit_name"]})
+    return out
+
+
+def worked_dose(ex: dict, dosage: str, limit: Decimal | None) -> dict | None:
+    """One dose example in this code's billing unit: amount, billing units
+    (rounded up), and the payment limit for those units."""
+    bu = billing_unit(dosage)
+    if bu is None or bu[1] != ex["measure"]:
+        return None
+    size, measure = bu
+    amount = ex["value"] * {"per kg": ex["weight"], "per m2": ex["bsa"], "flat": Decimal(1)}[ex["basis"]]
+    exact = amount / size
+    units = exact.to_integral_value(rounding="ROUND_CEILING")
+    return {**ex, "amount": amount, "units": units, "rounded": units != exact,
+            "at_limit": units * limit if limit is not None else None, "unit_measure": measure}
+
+
 def build_ncr_catalog(latest: dict[str, dict], packages: dict[str, set], groups: list[dict],
                       markets: list[dict]) -> list[dict]:
     """Every product in the latest CMS crosswalk, for visitors who build their
@@ -1341,6 +1382,7 @@ def make_env() -> Environment:
                        arrow_percent=arrow_percent, plain_percent=plain_percent,
                        num=number, quarter=quarter_label, months=quarter_months,
                        effective=effective_range, long_date=long_date, desc=display_text,
+                       plain_num=lambda v: f"{v.normalize():,f}",  # Decimal 400.0 -> '400', 1.90 -> '1.9'
                        big_money=big_money, short_money=short_money, share=share_text, count=count,
                        short_signed_money=lambda v: sign(v) + short_money(abs(v)))
     return env
@@ -1373,6 +1415,10 @@ def main() -> int:
     discarded = load_discarded(con)
     product_names, generic_names = load_product_names(con)
     makers = load_makers(con, latest_q, warnings.append)
+    fda_packages = company_data.load_fda_packages()
+    if fda_packages is None:
+        warnings.append("no FDA package snapshot in reference/company_sources/; code pages show no 10-digit "
+                        "NDCs (run scripts/fetch_company_sources.py --only fda_packages).")
     con.close()
     if CMS_DATA_MANIFEST.exists():
         with CMS_DATA_MANIFEST.open(encoding="utf-8") as f:
@@ -1475,6 +1521,7 @@ def main() -> int:
                                         for f in grp["market"]["source_files"]]
     ncr_markets = build_ncr(groups, ncr_packages, warnings.append)
     ncr_catalog = build_ncr_catalog(latest, ncr_packages, groups, ncr_markets)
+    dose_by_code = dose_examples(ncr_markets)
     group_of = {}
     for grp in groups:
         for e in [grp["ref"], *grp["bios"]]:
@@ -1584,7 +1631,14 @@ def main() -> int:
             per_pkg = None
             if prod["units"] is not None and newest["payment_limit"] is not None:
                 per_pkg = prod["units"] * newest["payment_limit"]
-            code_products.append({**prod, "per_package": per_pkg})
+            # CMS writes NDCs as 11 digits, 5-4-2. Claims use the same 11 digits
+            # without hyphens; the 10-digit form is the one FDA lists, if any.
+            is_542 = bool(company_data.NDC_5_4_2.match(prod["ndc"] or ""))
+            code_products.append({**prod, "per_package": per_pkg,
+                                  "ndc_claim": prod["ndc"].replace("-", "") if is_542 else None,
+                                  # FDA sometimes lists one package under two product listings; shown once.
+                                  "fda": list({f["ndc_10"]: f for f in (fda_packages or {}).get(prod["ndc"], [])
+                                               }.values()) if is_542 else []})
             sources.setdefault(prod["source_file"], {
                 "quarter": latest_q, "is_current": True, "posted": prod["cms_posted_date"],
                 "source_name": prod["source_file"].rsplit("/", 1)[-1],
@@ -1619,6 +1673,8 @@ def main() -> int:
             "group": group_of.get(code),
             "products": code_products,
             "usage": build_code_usage(code, usage, usage_years, usage_ytd, geo, discarded),
+            "doses": [d for d in (worked_dose(ex, newest["hcpcs_dosage"], newest["payment_limit"])
+                                  for ex in dose_by_code.get(code, []) if code in latest) if d],
         })
         u = code_pages[-1]["usage"]
         if u:
@@ -1709,6 +1765,8 @@ def main() -> int:
         "pct_min_prior": PCT_MIN_PRIOR,
         "n_codes_all": len(code_pages),
         "rebate_page": REBATE_PAGE,
+        "jw_faq": JW_FAQ,
+        "ncr_page": NCR_PAGE,
     }
 
     sitemap: list[tuple[str, date | None]] = []

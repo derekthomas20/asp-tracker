@@ -39,6 +39,19 @@
           "size_bytes": 23063
         }
       ]
+    },
+    "fda_packages": {
+      "url": "https://www.accessdata.fda.gov/cder/ndctext.zip",
+      "snapshots": [
+        {
+          "local_path": "reference/company_sources/fda_packages/2026-10-22T232736Z_2b7ab9902289.tsv",
+          "fetched_at": "2026-10-22T23:27:36+00:00",
+          "sha256": "2b7ab9902289d8923ef8fcc7bb8e7c067eb1127b57526143bb04b39268bb322e",
+          "size_bytes": 768789,
+          "source_zip_sha256": "53ee8fbe0a0a64c9ffe399aa4f197a20bef9a7b8949252e28b744f16e2692504",
+          "crosswalk": "raw/2026/Q4/2026-09-17_october-2026-ndc-hcpcs-crosswalk-final.zip"
+        }
+      ]
     }
   }
 }
