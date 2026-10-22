@@ -397,7 +397,7 @@ tr.superseded td { color: var(--color-text-2); }
 .ncr legend { padding: 0 6px; font-family: var(--font-heading); font-weight: 600; font-size: 14px; color: var(--color-navy); }
 .ncr-f { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--color-text-2); margin: 0; }
 .ncr-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
-.ncr input[type="number"], .ncr select {
+.ncr input[type="number"], .ncr input[type="text"], .ncr input[type="search"], .ncr select {
   font: inherit; font-size: 15px; color: var(--color-text); background: var(--color-surface);
   border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 6px 8px; min-height: 36px;
   width: 100%; min-width: 0; font-variant-numeric: tabular-nums;
@@ -481,6 +481,18 @@ tr.superseded td { color: var(--color-text-2); }
 .ncr-best td { background: var(--color-teal-tint); }
 .ncr-off:not(.ncr-prod) td, .ncr-off .ncr-prod-bar > :not(.ncr-inc) { opacity: .45; }
 .ncr-prod-bar label.ncr-inc { color: var(--color-text); cursor: pointer; }
+.ncr-prod-bar select { width: auto; }
+.ncr-table td select { width: auto; min-height: 32px; padding: 3px 6px; font-size: 14px; }
+.ncr-unit { font-size: 13px; color: var(--color-text-2); }
+
+/* Comparisons of your own: product search */
+.ncr-own { display: grid; gap: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 10px 12px; }
+.ncr-found { list-style: none; margin: 0; padding: 0; display: grid; max-height: 22rem; overflow-y: auto; }
+.ncr-found:empty { display: none; }
+.ncr-found li { display: flex; gap: var(--space-2); align-items: center; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--color-border); }
+.ncr-found li:first-child { border-top: 0; }
+.ncr-found small { display: block; font-size: 13px; color: var(--color-text-2); }
+.ncr-found button { flex: none; }
 .ncr-inc input { accent-color: var(--color-teal); }
 
 .ncr details { border-top: 1px solid var(--color-border); padding-top: var(--space-2); }

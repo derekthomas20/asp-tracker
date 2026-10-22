@@ -132,7 +132,11 @@ requirements.txt     Python dependencies (keep short)
    should use `is_latest_release` to count each period once.
 3. **Build** (`scripts/build_site.py`): query the database and generate the
    pages in `public/` from the templates in `site/`. All numbers on the site
-   come from these queries. Company pages (`companies.html`,
+   come from these queries. The NCR calculator also gets
+   `tools/ncr-calculator/products.js`: every product in the latest CMS
+   crosswalk (payment limit, billing unit, package sizes), so visitors can
+   build their own comparisons; they enter doses for products not in
+   `data/ncr_markets.json`. Company pages (`companies.html`,
    `companies/<id>.html`) use only verified labeler codes; Medicare
    spending is added up only for codes every crosswalk product of which is
    credited to that one company.

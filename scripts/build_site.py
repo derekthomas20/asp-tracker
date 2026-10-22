@@ -27,7 +27,10 @@ Pages written to public/:
                         biosimilar net cost recovery calculator: products from
                         the sheet, packages from the CMS crosswalk, limits from
                         CMS, default doses from data/ncr_markets.json
-    search-index.js     the list behind the header search suggestions
+    tools/ncr-calculator/products.js
+                        every product in the CMS crosswalk, for comparisons
+                        visitors build themselves on the calculator page
+    search-index.js    the list behind the header search suggestions
     charts.js           draws the Chart.js line charts in the site's style
 
 Templates are in site/templates; site/style.css, site/charts.js, site/ncr.js,
@@ -1018,13 +1021,16 @@ def build_companies(mk: dict, latest: dict, code_pages: list[dict], usage, usage
 # --------------------------------------------------------------------------
 
 DOSE_BASIS = {"per kg": "mgkg", "per m2": "mgm2", "flat": "flat"}  # names used in site/ncr.js
-UNIT_NAMES = {"MG": "mg", "MCG": "mcg", "UNIT": "units", "UNITS": "units"}
+UNIT_NAMES = {"MG": "mg", "MCG": "mcg", "UNIT": "units", "UNITS": "units", "IU": "IU", "GM": "g",
+              "ML": "mL", "CC": "cc"}
+CATALOG_SCRIPT = "tools/ncr-calculator/products.js"
 
 
 def billing_unit(text: str | None) -> tuple[Decimal, str] | None:
     """(size, measure) of one billing unit from CMS dosage text such as
-    '10 MG', '0.5 MG', '1 MCG' or '1000 UNITS'. None if not in that form."""
-    m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*(MG|MCG|UNITS?)\s*", text or "", re.IGNORECASE)
+    '10 MG', '0.5 MG', '1 MCG', '1000 UNITS', '1 IU' or '1 ML'. None if not
+    in that form."""
+    m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*(MG|MCG|UNITS?|IU|GM|ML|CC)\s*", text or "", re.IGNORECASE)
     return (Decimal(m.group(1)), UNIT_NAMES[m.group(2).upper()]) if m else None
 
 
@@ -1083,7 +1089,7 @@ def build_ncr(groups: list[dict], packages: dict[str, set], warn) -> list[dict]:
             bu = billing_unit(e["dosage"])
             if bu is None:
                 raise SystemExit(f"STOPPED: {where}: CMS dosage {e['dosage']!r} for {e['code']} is not "
-                                 "in the form '<number> MG', 'MCG' or 'UNITS'.")
+                                 "in the form '<number> MG', 'MCG', 'UNITS', 'IU', 'GM' or 'ML'.")
             units_seen.setdefault(bu, []).append(e["code"])
         if len(units_seen) != 1:
             found = "; ".join(f"{s} {m}: {', '.join(c)}" for (s, m), c in units_seen.items())
@@ -1156,6 +1162,59 @@ def build_ncr(groups: list[dict], packages: dict[str, set], warn) -> list[dict]:
             warn(f"NCR calculator: biosimilar group {g['molecule']!r} has no market in "
                  f"{NCR_MARKETS.relative_to(ROOT)}.")
     return markets
+
+
+def build_ncr_catalog(latest: dict[str, dict], packages: dict[str, set], groups: list[dict],
+                      markets: list[dict]) -> list[dict]:
+    """Every product in the latest CMS crosswalk, for visitors who build their
+    own comparison: one product per HCPCS code and crosswalk drug name, with
+    each package size, its CMS payment limit and its billing unit. A product
+    that is also in a market keeps that market's name, default dose, packages,
+    multi-dose vials and example prices; any other product has no default
+    dose (CMS files don't give one) and its packages start as single-dose.
+    A code whose billing unit is not an amount ('PER DOSE', '1 EA') is dosed
+    in billing units."""
+    role = {e["code"]: e["role"] for g in groups for e in [g["ref"], *g["bios"]]}
+    in_market = {}
+    for mk in markets:
+        for p in mk["products"]:
+            in_market.setdefault(p["key"], (mk, p))
+    out = []
+    for code, items in sorted(packages.items()):
+        r = latest.get(code)
+        dosage = r["hcpcs_dosage"] if r else None
+        bu = billing_unit(dosage)
+        size, measure = bu or (Decimal(1), "billing units")
+        for name in sorted({n for n, _, _ in items}):
+            key = slugify(f"{name} {code}")
+            mk, mp = in_market.get(key, (None, None))
+            # A market package's key is "<billing units>-<SDV or MDV>".
+            market_pkgs = {k["key"].rsplit("-", 1)[0]: k for k in mp["packages"]} if mp else {}
+            pkgs = []
+            for units in sorted({u for n, u, _ in items if n == name}):
+                k = market_pkgs.get(number_text(units))
+                # A market's package keeps its vial type; one the market leaves out starts unused.
+                pkgs.append({"key": number_text(units), "amount": float(units * size), "units": float(units),
+                             "type": k["type"] if k else "OFF" if mp else "SDV",
+                             "example_price": k["example_price"] if k else None})
+            limit = r["payment_limit"] if r else None
+            out.append({
+                "key": key,
+                "name": mp["name"] if mp else name,
+                "hcpcs": code,
+                "description": display_text(r["short_description"]) if r else "",
+                "role": role.get(code, ""),
+                "reference": role.get(code) == "reference",
+                "status": "missing" if r is None else "cms" if limit is not None else "no_limit",
+                "cms_limit": plain_decimal(limit) if limit is not None else None,
+                "cms_dosage": dosage or "",
+                "unit_size": float(size), "unit_name": measure,
+                "unit_label": f"{size.normalize():,f} {measure}" if bu else (dosage or "1 billing unit"),
+                "dose": {k: mk["dose"][k] for k in ("basis", "value")} if mk else None,
+                "example_rebate_pct": mp["example_rebate_pct"] if mp else 0,
+                "packages": pkgs,
+            })
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -1308,6 +1367,7 @@ def main() -> int:
             grp["market"]["sources"] = [{"name": f.rsplit("/", 1)[-1], "url": cms_url.get(f)}
                                         for f in grp["market"]["source_files"]]
     ncr_markets = build_ncr(groups, ncr_packages, warnings.append)
+    ncr_catalog = build_ncr_catalog(latest, ncr_packages, groups, ncr_markets)
     group_of = {}
     for grp in groups:
         for e in [grp["ref"], *grp["bios"]]:
@@ -1591,7 +1651,14 @@ def main() -> int:
                   chart_labels=[quarter_label(q) for q in recent_qs], groups_source=groups_source)
 
     ncr_data = {"quarter": quarter_label(latest_q), "markets": ncr_markets}
-    write(NCR_PAGE, "ncr_calculator.html", ncr_data=ncr_data, sales_q=quarter_offset(latest_q, -2))
+    # Every crosswalk product, for comparisons visitors build themselves. A
+    # script (not JSON) so the page also works when opened from disk.
+    catalog_js = ("window.NCR_CATALOG = " + json.dumps(ncr_catalog, ensure_ascii=False, separators=(",", ":"))
+                  + ";\n").encode("utf-8")
+    (OUT / CATALOG_SCRIPT).parent.mkdir(parents=True, exist_ok=True)
+    (OUT / CATALOG_SCRIPT).write_bytes(catalog_js)
+    write(NCR_PAGE, "ncr_calculator.html", ncr_data=ncr_data, sales_q=quarter_offset(latest_q, -2),
+          catalog_version=hashlib.sha256(catalog_js).hexdigest()[:10])
     ncr_codes = {p["hcpcs"] for m in ncr_markets for p in m["products"] if p["status"] == "cms"}
 
     write("about.html", "about.html", sales_q=quarter_offset(latest_q, -2),
@@ -1607,7 +1674,8 @@ def main() -> int:
           f"{plain_percent(str(usual_co))} ({usual_co_n:,} codes)")
     print(f"  biosimilar groups published: {len(groups)}"
           + (f" (from {', '.join(groups_source)})" if groups_source else " (no sheet snapshot loaded)"))
-    print(f"  NCR calculator: {len(ncr_markets)} markets, {len(ncr_codes)} codes priced from {latest_q}")
+    print(f"  NCR calculator: {len(ncr_markets)} markets, {len(ncr_codes)} codes priced from {latest_q}; "
+          f"{len(ncr_catalog):,} products to build your own comparison from")
     print(f"  companies: {len(company_list)} published; {company_summary['n_own']} codes with one maker, "
           f"{company_summary['n_shared']} shared, {company_summary['n_unassigned']} not assigned yet")
     if mismatch:
