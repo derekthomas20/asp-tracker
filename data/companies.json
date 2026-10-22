@@ -1,15 +1,4 @@
 {
-  "_about": [
-    "Which company makes the drugs behind each HCPCS code. Hand-maintained; holds names and tickers, no numbers.",
-    "A CMS crosswalk row is credited to the company whose cms_names pattern matches the row's labeler name;",
-    "if no company's pattern matches, to the company that owns the NDC labeler code (first 5 digits of the NDC).",
-    "Each labeler code is checked every week against the FDA NDC Directory and GLEIF by scripts/companies_report.py.",
-    "It counts as verified when GLEIF says the FDA-listed labeler belongs to this company's lei, or when the owner",
-    "approved it (python scripts/companies_report.py --approve <code>), which records what FDA and GLEIF said then.",
-    "us_listing is checked against SEC's ticker list through sec_cik; home_listing is typed by hand.",
-    "not_manufacturers: distributors and repackagers. Their rows are ignored when deciding who makes a drug.",
-    "Skin substitutes (HCPCS Q4100-Q4399) are left out entirely."
-  ],
   "companies": [
     {
       "id": "roche",
@@ -28,10 +17,36 @@
       "cms_names": "genentech|roche|spark therapeutics",
       "labeler_codes": [
         {
-          "code": "50242"
+          "code": "50242",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Genentech, Inc."
+            ],
+            "gleif": [
+              [
+                "Genentech, Inc.",
+                "254900RA7ET1PAV4HP37",
+                null
+              ]
+            ]
+          }
         },
         {
-          "code": "00004"
+          "code": "00004",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Genentech, Inc."
+            ],
+            "gleif": [
+              [
+                "Genentech, Inc.",
+                "254900RA7ET1PAV4HP37",
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -79,10 +94,36 @@
           "code": "55513"
         },
         {
-          "code": "76075"
+          "code": "76075",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Onyx Pharmaceuticals, Inc."
+            ],
+            "gleif": [
+              [
+                "Onyx Pharmaceuticals, Inc.",
+                "549300K47GO90N8J4853",
+                null
+              ]
+            ]
+          }
         },
         {
-          "code": "75987"
+          "code": "75987",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Horizon Therapeutics USA, Inc."
+            ],
+            "gleif": [
+              [
+                "Horizon Therapeutics USA, Inc.",
+                "254900IS87RLPXY88S03",
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -100,19 +141,63 @@
       "cms_names": "squibb|bristol|celgene|juno therapeutics|mirati|karuna",
       "labeler_codes": [
         {
-          "code": "00003"
+          "code": "00003",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "E.R. Squibb & Sons, L.L.C."
+            ],
+            "gleif": [
+              [
+                "E.R. Squibb & Sons, L.L.C.",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
-          "code": "59572"
+          "code": "59572",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Celgene Corporation"
+            ],
+            "gleif": [
+              [
+                "Celgene Corporation",
+                "4SIHMF0MOSTTL8CD0X64",
+                null
+              ]
+            ]
+          }
         },
         {
-          "code": "68817"
+          "code": "68817",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Abraxis BioScience, LLC"
+            ],
+            "gleif": [
+              [
+                "Abraxis BioScience, LLC",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
           "code": "73153"
         },
         {
-          "code": "00015"
+          "code": "00015",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [],
+            "gleif": []
+          }
         }
       ]
     },
@@ -136,7 +221,26 @@
           "code": "66215"
         },
         {
-          "code": "59676"
+          "code": "59676",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Janssen Products LP",
+              "Janssen Products, LP"
+            ],
+            "gleif": [
+              [
+                "Janssen Products LP",
+                null,
+                null
+              ],
+              [
+                "Janssen Products, LP",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
           "code": "50458"
@@ -184,7 +288,26 @@
           "code": "00186"
         },
         {
-          "code": "25682"
+          "code": "25682",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Alexion Pharmaceuticals Inc.",
+              "Alexion Pharmaceuticals, Inc."
+            ],
+            "gleif": [
+              [
+                "Alexion Pharmaceuticals Inc.",
+                "M1YXUUZR0EIMU8T0EM75",
+                null
+              ],
+              [
+                "Alexion Pharmaceuticals, Inc.",
+                "M1YXUUZR0EIMU8T0EM75",
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -250,7 +373,26 @@
           "code": "00008"
         },
         {
-          "code": "00049"
+          "code": "00049",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "ROERIG",
+              "Roerig"
+            ],
+            "gleif": [
+              [
+                "ROERIG",
+                null,
+                null
+              ],
+              [
+                "Roerig",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
           "code": "00046"
@@ -259,7 +401,20 @@
           "code": "00013"
         },
         {
-          "code": "58394"
+          "code": "58394",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Wyeth BioPharma Division of Wyeth Pharmaceuticals LLC"
+            ],
+            "gleif": [
+              [
+                "Wyeth BioPharma Division of Wyeth Pharmaceuticals LLC",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
           "code": "60793"
@@ -271,7 +426,20 @@
           "code": "00409"
         },
         {
-          "code": "51144"
+          "code": "51144",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "SEAGEN INC."
+            ],
+            "gleif": [
+              [
+                "SEAGEN INC.",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
           "code": "61570"
@@ -307,7 +475,26 @@
           "code": "63833"
         },
         {
-          "code": "59353"
+          "code": "59353",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Vifor (International) Inc.",
+              "Vifor (International), Inc."
+            ],
+            "gleif": [
+              [
+                "Vifor (International) Inc.",
+                null,
+                null
+              ],
+              [
+                "Vifor (International), Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -331,7 +518,20 @@
           "code": "65597"
         },
         {
-          "code": "00517"
+          "code": "00517",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "American Regent, Inc."
+            ],
+            "gleif": [
+              [
+                "American Regent, Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -373,22 +573,92 @@
           "code": "00074"
         },
         {
-          "code": "00023"
+          "code": "00023",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Allergan, Inc."
+            ],
+            "gleif": [
+              [
+                "Allergan, Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
-          "code": "72903"
+          "code": "72903",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "ImmunoGen, Inc."
+            ],
+            "gleif": [
+              [
+                "ImmunoGen, Inc.",
+                "54930084U0R1OP766Y02",
+                null
+              ]
+            ]
+          }
         },
         {
-          "code": "57970"
+          "code": "57970",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Allergan, Inc."
+            ],
+            "gleif": [
+              [
+                "Allergan, Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
-          "code": "00456"
+          "code": "00456",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Allergan, Inc."
+            ],
+            "gleif": [
+              [
+                "Allergan, Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
-          "code": "58914"
+          "code": "58914",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Allergan, Inc."
+            ],
+            "gleif": [
+              [
+                "Allergan, Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
-          "code": "00051"
+          "code": "00051",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [],
+            "gleif": []
+          }
         }
       ]
     },
@@ -433,10 +703,28 @@
           "code": "00078"
         },
         {
-          "code": "00065"
-        },
-        {
           "code": "71894"
+        }
+      ]
+    },
+    {
+      "id": "alcon",
+      "name": "Alcon",
+      "us_listing": {
+        "ticker": "ALC",
+        "exchange": "NYSE"
+      },
+      "home_listing": {
+        "ticker": "ALC",
+        "exchange": "SIX Swiss Exchange"
+      },
+      "sec_cik": 1167379,
+      "parent_legal_name": "Alcon Inc.",
+      "lei": null,
+      "cms_names": "\\balcon\\b",
+      "labeler_codes": [
+        {
+          "code": "00065"
         }
       ]
     },
@@ -517,10 +805,36 @@
           "code": "49401"
         },
         {
-          "code": "49702"
+          "code": "49702",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "ViiV Healthcare Company"
+            ],
+            "gleif": [
+              [
+                "ViiV Healthcare Company",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
-          "code": "58160"
+          "code": "58160",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "GlaxoSmithKline Biologicals SA"
+            ],
+            "gleif": [
+              [
+                "GlaxoSmithKline Biologicals SA",
+                null,
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -541,7 +855,20 @@
           "code": "61958"
         },
         {
-          "code": "71287"
+          "code": "71287",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Kite Pharma, Inc."
+            ],
+            "gleif": [
+              [
+                "Kite Pharma, Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
           "code": "55135"
@@ -583,16 +910,47 @@
           "code": "00075"
         },
         {
-          "code": "58468"
+          "code": "58468",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Genzyme Corporation"
+            ],
+            "gleif": [
+              [
+                "Genzyme Corporation",
+                "549300ZNNO34O8GXUE47",
+                null
+              ]
+            ]
+          }
         },
         {
           "code": "71104"
         },
         {
-          "code": "80203"
+          "code": "80203",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [],
+            "gleif": []
+          }
         },
         {
-          "code": "73650"
+          "code": "73650",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Provention Bio, Inc."
+            ],
+            "gleif": [
+              [
+                "Provention Bio, Inc.",
+                "5493003LM26XAVJKLD34",
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -646,7 +1004,26 @@
           "code": "51759"
         },
         {
-          "code": "00591"
+          "code": "00591",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "ACTAVIS PHARMA, INC.",
+              "Actavis Pharma, Inc."
+            ],
+            "gleif": [
+              [
+                "ACTAVIS PHARMA, INC.",
+                null,
+                null
+              ],
+              [
+                "Actavis Pharma, Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
           "code": "51285"
@@ -658,7 +1035,20 @@
           "code": "59310"
         },
         {
-          "code": "45963"
+          "code": "45963",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Actavis Pharma, Inc."
+            ],
+            "gleif": [
+              [
+                "Actavis Pharma, Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -703,7 +1093,20 @@
           "code": "00002"
         },
         {
-          "code": "66733"
+          "code": "66733",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "ImClone LLC"
+            ],
+            "gleif": [
+              [
+                "ImClone LLC",
+                null,
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -721,10 +1124,36 @@
       "cms_names": "mylan|viatris|greenstone",
       "labeler_codes": [
         {
-          "code": "67457"
+          "code": "67457",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Mylan Institutional LLC"
+            ],
+            "gleif": [
+              [
+                "Mylan Institutional LLC",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
-          "code": "72078"
+          "code": "72078",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Mylan Institutional LLC"
+            ],
+            "gleif": [
+              [
+                "Mylan Institutional LLC",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
           "code": "00378"
@@ -736,7 +1165,26 @@
           "code": "58151"
         },
         {
-          "code": "51079"
+          "code": "51079",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Mylan Institutional Inc.",
+              "MylanInstitutional Inc."
+            ],
+            "gleif": [
+              [
+                "Mylan Institutional Inc.",
+                null,
+                null
+              ],
+              [
+                "MylanInstitutional Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
           "code": "59762"
@@ -832,7 +1280,44 @@
       "cms_names": "hikma|west-ward|custopharm",
       "labeler_codes": [
         {
-          "code": "00143"
+          "code": "00143",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "HIKMA PHARMACEUTICALS USA INC.",
+              "Hikma Pharmaceuticals USA Inc",
+              "Hikma Pharmaceuticals USA Inc.",
+              "Hikma Pharmaceuticals USA, Inc.",
+              "West-Ward Pharmaceuticals Corp"
+            ],
+            "gleif": [
+              [
+                "HIKMA PHARMACEUTICALS USA INC.",
+                null,
+                null
+              ],
+              [
+                "Hikma Pharmaceuticals USA Inc",
+                null,
+                null
+              ],
+              [
+                "Hikma Pharmaceuticals USA Inc.",
+                null,
+                null
+              ],
+              [
+                "Hikma Pharmaceuticals USA, Inc.",
+                null,
+                null
+              ],
+              [
+                "West-Ward Pharmaceuticals Corp",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
           "code": "00054"
@@ -844,7 +1329,12 @@
           "code": "00641"
         },
         {
-          "code": "63037"
+          "code": "63037",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [],
+            "gleif": []
+          }
         }
       ]
     },
@@ -916,7 +1406,26 @@
       "cms_names": "eugia|aurobindo|auromedics",
       "labeler_codes": [
         {
-          "code": "55150"
+          "code": "55150",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "AuroMedics Pharma LLC",
+              "Eugia US LLC"
+            ],
+            "gleif": [
+              [
+                "AuroMedics Pharma LLC",
+                null,
+                null
+              ],
+              [
+                "Eugia US LLC",
+                null,
+                null
+              ]
+            ]
+          }
         },
         {
           "code": "59651"
@@ -1090,7 +1599,20 @@
       "cms_names": "veloxis|asahi kasei",
       "labeler_codes": [
         {
-          "code": "68992"
+          "code": "68992",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Veloxis Pharmaceuticals, Inc"
+            ],
+            "gleif": [
+              [
+                "Veloxis Pharmaceuticals, Inc",
+                "549300YD7MO7TUE8GX79",
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -1147,7 +1669,20 @@
       "cms_names": "emd serono",
       "labeler_codes": [
         {
-          "code": "44087"
+          "code": "44087",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "EMD Serono, Inc."
+            ],
+            "gleif": [
+              [
+                "EMD Serono, Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -1264,7 +1799,20 @@
       "cms_names": "pacira",
       "labeler_codes": [
         {
-          "code": "65250"
+          "code": "65250",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Pacira Pharmaceuticals, Inc."
+            ],
+            "gleif": [
+              [
+                "Pacira Pharmaceuticals, Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -1348,7 +1896,12 @@
       "cms_names": "zimmer",
       "labeler_codes": [
         {
-          "code": "50016"
+          "code": "50016",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [],
+            "gleif": []
+          }
         }
       ]
     },
@@ -1438,10 +1991,72 @@
       "cms_names": "\\baccord\\b",
       "labeler_codes": [
         {
-          "code": "16729"
+          "code": "16729",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Accord Healthcare Inc",
+              "Accord Healthcare Inc.",
+              "Accord Healthcare, Inc",
+              "Accord Healthcare, Inc.",
+              "Accord Healthcare, Inc.,"
+            ],
+            "gleif": [
+              [
+                "Accord Healthcare Inc",
+                "636700MG9IYNWHFUB284",
+                null
+              ],
+              [
+                "Accord Healthcare Inc.",
+                "636700MG9IYNWHFUB284",
+                null
+              ],
+              [
+                "Accord Healthcare, Inc",
+                "636700MG9IYNWHFUB284",
+                null
+              ],
+              [
+                "Accord Healthcare, Inc.",
+                "636700MG9IYNWHFUB284",
+                null
+              ],
+              [
+                "Accord Healthcare, Inc.,",
+                "636700MG9IYNWHFUB284",
+                null
+              ]
+            ]
+          }
         },
         {
-          "code": "69448"
+          "code": "69448",
+          "reviewed": {
+            "date": "2026-10-22",
+            "fda_names": [
+              "Accord BioPharma Inc.",
+              "Accord BioPharma Inc.,",
+              "Accord BioPharma, Inc."
+            ],
+            "gleif": [
+              [
+                "Accord BioPharma Inc.",
+                null,
+                null
+              ],
+              [
+                "Accord BioPharma Inc.,",
+                null,
+                null
+              ],
+              [
+                "Accord BioPharma, Inc.",
+                null,
+                null
+              ]
+            ]
+          }
         }
       ]
     },

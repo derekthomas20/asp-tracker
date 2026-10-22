@@ -20,6 +20,12 @@
           "fetched_at": "2026-10-22T11:24:08+00:00",
           "sha256": "36f06fcd0a61c96dfeb3add7b37e5fdc445b6b01bc2aeb6861868e279bed0c3c",
           "size_bytes": 4858
+        },
+        {
+          "local_path": "reference/company_sources/sec_tickers/2026-10-22T115203Z_a3b753200fa9.json",
+          "fetched_at": "2026-10-22T11:52:03+00:00",
+          "sha256": "a3b753200fa9a8ab16d2567f641238397845d10b676d25dd4b427e5739b7be93",
+          "size_bytes": 4946
         }
       ]
     },

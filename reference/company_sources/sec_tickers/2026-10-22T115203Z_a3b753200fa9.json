@@ -1,0 +1,308 @@
+[
+ {
+  "cik": 10456,
+  "name": "BAXTER INTERNATIONAL INC",
+  "ticker": "BAX",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 14272,
+  "name": "BRISTOL MYERS SQUIBB CO",
+  "ticker": "BMY",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 14272,
+  "name": "BRISTOL MYERS SQUIBB CO",
+  "ticker": "CELG-RI",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 59478,
+  "name": "ELI LILLY & Co",
+  "ticker": "LLY",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 78003,
+  "name": "PFIZER INC",
+  "ticker": "PFE",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 200406,
+  "name": "JOHNSON & JOHNSON",
+  "ticker": "JNJ",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 310158,
+  "name": "Merck & Co., Inc.",
+  "ticker": "MRK",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 318154,
+  "name": "AMGEN INC",
+  "ticker": "AMGN",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 353278,
+  "name": "NOVO NORDISK A S",
+  "ticker": "NONOF",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 353278,
+  "name": "NOVO NORDISK A S",
+  "ticker": "NVO",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 818686,
+  "name": "TEVA PHARMACEUTICAL INDUSTRIES LTD",
+  "ticker": "TEVA",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 872589,
+  "name": "REGENERON PHARMACEUTICALS, INC.",
+  "ticker": "REGN",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 875045,
+  "name": "BIOGEN INC.",
+  "ticker": "BIIB",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 882095,
+  "name": "GILEAD SCIENCES, INC.",
+  "ticker": "GILD",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 883984,
+  "name": "ICU MEDICAL INC/DE",
+  "ticker": "ICUI",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 901832,
+  "name": "ASTRAZENECA PLC",
+  "ticker": "AZN",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 904868,
+  "name": "Fresenius SE & Co. KGaA",
+  "ticker": "FSNUF",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 904868,
+  "name": "Fresenius SE & Co. KGaA",
+  "ticker": "FSNUY",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 1082554,
+  "name": "UNITED THERAPEUTICS Corp",
+  "ticker": "UTHR",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1114448,
+  "name": "NOVARTIS AG",
+  "ticker": "NVS",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 1114448,
+  "name": "NOVARTIS AG",
+  "ticker": "NVSEF",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 1121404,
+  "name": "Sanofi",
+  "ticker": "SNY",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1121404,
+  "name": "Sanofi",
+  "ticker": "SNYNF",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 1131399,
+  "name": "GSK plc",
+  "ticker": "GLAXF",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 1131399,
+  "name": "GSK plc",
+  "ticker": "GSK",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 1135951,
+  "name": "DR REDDYS LABORATORIES LTD",
+  "ticker": "RDY",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 1136869,
+  "name": "ZIMMER BIOMET HOLDINGS, INC.",
+  "ticker": "ZBH",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 1167379,
+  "name": "ALCON INC",
+  "ticker": "ALC",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 1178670,
+  "name": "ALNYLAM PHARMACEUTICALS, INC.",
+  "ticker": "ALNY",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1232524,
+  "name": "Jazz Pharmaceuticals plc",
+  "ticker": "JAZZ",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1274152,
+  "name": "CSL LTD",
+  "ticker": "CMXHF",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 1274152,
+  "name": "CSL LTD",
+  "ticker": "CSLLY",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 1333141,
+  "name": "Fresenius Medical Care AG",
+  "ticker": "FMCQF",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 1333141,
+  "name": "Fresenius Medical Care AG",
+  "ticker": "FMS",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 1360214,
+  "name": "HARROW, INC.",
+  "ticker": "HROW",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1368514,
+  "name": "ADMA BIOLOGICS, INC.",
+  "ticker": "ADMA",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1395064,
+  "name": "TAKEDA PHARMACEUTICAL CO LTD",
+  "ticker": "TAK",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 1395064,
+  "name": "TAKEDA PHARMACEUTICAL CO LTD",
+  "ticker": "TKPHF",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 1396814,
+  "name": "Pacira BioSciences, Inc.",
+  "ticker": "PCRX",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1434265,
+  "name": "GENMAB A/S",
+  "ticker": "GMAB",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1434265,
+  "name": "GENMAB A/S",
+  "ticker": "GNMSF",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 1438569,
+  "name": "Grifols SA",
+  "ticker": "GIFLF",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 1438569,
+  "name": "Grifols SA",
+  "ticker": "GIFOF",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 1438569,
+  "name": "Grifols SA",
+  "ticker": "GIKLY",
+  "exchange": "OTC"
+ },
+ {
+  "cik": 1438569,
+  "name": "Grifols SA",
+  "ticker": "GRFS",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1551152,
+  "name": "AbbVie Inc.",
+  "ticker": "ABBV",
+  "exchange": "NYSE"
+ },
+ {
+  "cik": 1671927,
+  "name": "Immunocore Holdings plc",
+  "ticker": "IMCR",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1697862,
+  "name": "ARGENX SE",
+  "ticker": "ARGX",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1723128,
+  "name": "Amneal Pharmaceuticals, Inc.",
+  "ticker": "AMRX",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1792044,
+  "name": "Viatris Inc",
+  "ticker": "VTRS",
+  "exchange": "Nasdaq"
+ },
+ {
+  "cik": 1821825,
+  "name": "Organon & Co.",
+  "ticker": "OGN",
+  "exchange": "NYSE"
+ }
+]
