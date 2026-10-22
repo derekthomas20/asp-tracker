@@ -13,29 +13,95 @@
 
 <p class="note">“Medicare spending” is what Medicare Part B paid for drugs only that company makes. “Price change” is this quarter’s change in those drugs’ payment limits,
 with bigger-selling drugs counting more. Open a company for a plain-language summary.</p>
+{# Filters and sorting are added by the script below; without JavaScript the
+   filters stay hidden and the table keeps its order (largest spending first). #}
+{% set exchanges = companies|map(attribute="tickers")|sum(start=[])|map(attribute="exchange")|unique|sort %}
+<div class="table-filters" id="company-filters" hidden>
+  <label>Exchange<select id="f-exchange"><option value="">All exchanges</option>
+    {% for e in exchanges %}<option>{{ e }}</option>{% endfor %}</select></label>
+  <label>Shares<select id="f-listed"><option value="">All companies</option>
+    <option value="yes">Publicly traded</option><option value="no">Not publicly traded</option></select></label>
+  <p class="note" id="f-count" aria-live="polite"></p>
+</div>
 <div class="table-wrap">
-<table class="stack">
+<table class="stack sortable" id="companies">
   <thead><tr>
-    <th>Company</th><th>Tickers</th>
-    <th class="num">Medicare spending, {{ cs.year }}{% if cs.preliminary %} (prelim.){% endif %}</th>
-    {% if cs.prev_year %}<th class="num">vs. {{ cs.prev_year }}</th>{% endif %}
-    <th class="num">Price change, {{ latest_q|quarter }}</th>
-    <th class="num">Drugs</th>
+    <th data-sort="text">Company</th><th data-sort="text">Tickers</th>
+    <th class="num" data-sort="num" aria-sort="descending">Medicare spending, {{ cs.year }}{% if cs.preliminary %} (prelim.){% endif %}</th>
+    {% if cs.prev_year %}<th class="num" data-sort="num">vs. {{ cs.prev_year }}</th>{% endif %}
+    <th class="num" data-sort="num">Price change, {{ latest_q|quarter }}</th>
+    <th class="num" data-sort="num">Drugs</th>
   </tr></thead>
   <tbody>
   {% for c in companies %}
     {% set t = c.brief.price_trend %}
-    <tr>
-      <td data-label="Company"><a class="name" href="{{ root }}companies/{{ c.id }}.html">{{ c.name }}</a></td>
-      <td data-label="Tickers" class="muted">{{ tickers(c.tickers) }}</td>
-      <td data-label="Medicare spending" class="num strong">{{ c.spending|short_money if c.spending is not none else "–" }}</td>
-      {% if cs.prev_year %}<td data-label="vs. {{ cs.prev_year }}" class="num {% if c.spending_change %}{{ 'up' if c.spending_change > 0 else 'down' }}{% endif %}">{{ c.spending_change|arrow_percent if c.spending_change is not none else "–" }}</td>{% endif %}
-      <td data-label="Price change, {{ latest_q|quarter }}" class="num {% if t %}{{ 'up' if t > 0 else 'down' }}{% endif %}">{{ t|arrow_percent if t is not none else "–" }}</td>
-      <td data-label="Drugs" class="num">{{ c.own|length|num }}{% if c.shared %} <span class="muted">+ {{ c.shared|length }} shared</span>{% endif %}</td>
+    <tr data-exchanges="{{ c.tickers|map(attribute='exchange')|join('|') }}">
+      <td data-label="Company" data-sort="{{ c.name }}"><a class="name" href="{{ root }}companies/{{ c.id }}.html">{{ c.name }}</a></td>
+      <td data-label="Tickers" class="muted" data-sort="{{ c.tickers|map(attribute='ticker')|join(' ') }}">{{ tickers(c.tickers) }}</td>
+      <td data-label="Medicare spending" class="num strong" data-sort="{{ c.spending if c.spending is not none else '' }}">{{ c.spending|short_money if c.spending is not none else "–" }}</td>
+      {% if cs.prev_year %}<td data-label="vs. {{ cs.prev_year }}" data-sort="{{ c.spending_change if c.spending_change is not none else '' }}" class="num {% if c.spending_change %}{{ 'up' if c.spending_change > 0 else 'down' }}{% endif %}">{{ c.spending_change|arrow_percent if c.spending_change is not none else "–" }}</td>{% endif %}
+      <td data-label="Price change, {{ latest_q|quarter }}" data-sort="{{ t if t is not none else '' }}" class="num {% if t %}{{ 'up' if t > 0 else 'down' }}{% endif %}">{{ t|arrow_percent if t is not none else "–" }}</td>
+      <td data-label="Drugs" class="num" data-sort="{{ c.own|length + c.shared|length }}">{{ c.own|length|num }}{% if c.shared %} <span class="muted">+ {{ c.shared|length }} shared</span>{% endif %}</td>
     </tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
 {% include "company_method.html" %}
+{% endblock %}
+{% block scripts %}
+<script>
+// Companies table: filter by exchange and by publicly traded or not, and
+// sort by any column (click again to reverse). Blank values sort last.
+(function () {
+  var table = document.getElementById("companies"), rows = [].slice.call(table.tBodies[0].rows);
+  var exchange = document.getElementById("f-exchange"), listed = document.getElementById("f-listed");
+  var shown = document.getElementById("f-count");
+  document.getElementById("company-filters").hidden = false;
+
+  function filter() {
+    var n = 0;
+    rows.forEach(function (tr) {
+      var ex = tr.dataset.exchanges ? tr.dataset.exchanges.split("|") : [];
+      var ok = (!exchange.value || ex.indexOf(exchange.value) !== -1)
+            && (!listed.value || (listed.value === "yes") === (ex.length > 0));
+      tr.hidden = !ok;
+      if (ok) n++;
+    });
+    shown.textContent = n === rows.length ? "" : "Showing " + n + " of " + rows.length + " companies.";
+  }
+  exchange.addEventListener("change", filter);
+  listed.addEventListener("change", filter);
+
+  var heads = [].slice.call(table.tHead.rows[0].cells);
+  heads.forEach(function (th, col) {
+    if (!th.dataset.sort) return;
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "sort";
+    button.textContent = th.textContent;
+    th.textContent = "";
+    th.appendChild(button);
+    button.addEventListener("click", function () {
+      var numeric = th.dataset.sort === "num";
+      var current = th.getAttribute("aria-sort");
+      // First click: largest numbers first, names A to Z.
+      var dir = current ? (current === "descending" ? "ascending" : "descending") : (numeric ? "descending" : "ascending");
+      heads.forEach(function (h) { h.removeAttribute("aria-sort"); });
+      th.setAttribute("aria-sort", dir);
+      var sign = dir === "ascending" ? 1 : -1;
+      function key(tr) {
+        var v = tr.cells[col].dataset.sort;
+        return numeric ? (v === "" ? null : parseFloat(v)) : (v === "" ? null : v.toLowerCase());
+      }
+      rows.sort(function (a, b) {
+        var x = key(a), y = key(b);
+        if (x === null || y === null) return (x === null) - (y === null);
+        return (x < y ? -1 : x > y ? 1 : 0) * sign;
+      });
+      rows.forEach(function (tr) { table.tBodies[0].appendChild(tr); });
+    });
+  });
+})();
+</script>
 {% endblock %}
