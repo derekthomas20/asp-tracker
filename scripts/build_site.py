@@ -37,6 +37,8 @@ Pages written to public/:
     sitemap.xml         every page, for search engines, dated by its CMS posting
     robots.txt          lets search engines in and points them to sitemap.xml
     search-index.js    the list behind the header search suggestions
+Also build/newsletter.json (not part of the site): the subject and Markdown
+body of a newsletter for the latest quarter, from site/templates/newsletter.md.
     charts.js           draws the Chart.js line charts in the site's style
 
 Templates are in site/templates; site/style.css, site/charts.js, site/ncr.js,
@@ -82,6 +84,10 @@ NCR_SCRIPT = ROOT / "site" / "ncr.js"
 MAP_SCRIPT = ROOT / "site" / "usmap.js"  # state map on the biosimilar group pages
 NCR_MARKETS = ROOT / "data" / "ncr_markets.json"  # hand-maintained doses; holds no prices
 SITE_INFO = ROOT / "data" / "site.json"  # hand-maintained: who runs the site, contact, sign-up
+# The newsletter draft for the latest quarter (not published; see
+# scripts/newsletter_draft.py, which saves it to Buttondown as a draft).
+NEWSLETTER = ROOT / "build" / "newsletter.json"
+NEWSLETTER_ROWS = 5  # increases and decreases listed in the newsletter
 NCR_PAGE = "tools/ncr-calculator/index.html"
 STATIC = ROOT / "site" / "static"  # logo and favicons
 OUT = ROOT / "public"
@@ -1425,6 +1431,7 @@ def make_env() -> Environment:
                        num=number, quarter=quarter_label, months=quarter_months,
                        effective=effective_range, long_date=long_date, desc=display_text,
                        plain_num=lambda v: f"{v.normalize():,f}",  # Decimal 400.0 -> '400', 1.90 -> '1.9'
+                       md=lambda t: re.sub(r"([\\`*_\[\]])", r"\\\1", str(t)),  # Markdown-safe text
                        big_money=big_money, short_money=short_money, share=share_text, count=count,
                        short_signed_money=lambda v: sign(v) + short_money(abs(v)))
     return env
@@ -1929,6 +1936,18 @@ def main() -> int:
           last_download=last_download.date(), built=date.today(), first_q=quarters[0])
 
     write_sitemap(sitemap)
+
+    # Newsletter draft for the latest quarter, from the same figures as the site.
+    first_month = QUARTER_MONTHS[latest_q[5]][0]
+    newsletter = env.get_template("newsletter.md").render(
+        **common, s=summary, movers=movers, n=NEWSLETTER_ROWS, effect_year=effect_year,
+        sales_q=quarter_offset(latest_q, -2), site_url=SITE_URL)
+    NEWSLETTER.parent.mkdir(exist_ok=True)
+    NEWSLETTER.write_text(json.dumps({
+        "quarter": latest_q,
+        "subject": f"{first_month} {latest_q[:4]} Medicare Part B payment limits: the biggest changes",
+        "body": newsletter.strip() + "\n",
+    }, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
     n_pages = sum(1 for _ in OUT.rglob("*.html"))
     print(f"Built {OUT.relative_to(ROOT)}/ : {n_pages:,} pages, latest quarter {latest_q}")

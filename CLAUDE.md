@@ -187,8 +187,14 @@ started by hand from the repository's **Actions** tab ("Run workflow"). It:
    `public/` to GitHub Pages with the official Pages actions. If
    `scrape.py` added any CMS file, `scripts/new_files_report.py` writes a
    notice and the workflow opens an issue labelled `new-cms-file` that
-   @mentions the owner (so GitHub emails them): the cue to write the
-   Buttondown newsletter. No email is sent to subscribers automatically.
+   @mentions the owner (so GitHub emails them). For a new quarter,
+   `scripts/newsletter_draft.py` saves the newsletter `build_site.py`
+   wrote (`build/newsletter.json`, from `site/templates/newsletter.md`) to
+   Buttondown as a **draft** and comments on the issue. It always asks for
+   status `draft` and stops if Buttondown answers otherwise; the owner
+   reads the draft and presses Send. Needs the repository secret
+   `BUTTONDOWN_API_KEY`; without it the comment holds the email text.
+   No email is ever sent to subscribers automatically.
 5. Runs `scripts/companies_report.py` and opens, updates or closes the
    "Company mapping needs review" issue (label `company-review`). The
    issue gets a comment, which GitHub emails, only when its list changes.

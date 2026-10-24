@@ -115,19 +115,30 @@ jobs:
 
       # When CMS posted a new or revised ASP pricing file, open an issue
       # (labelled new-cms-file) that @mentions the owner, so GitHub emails
-      # them: the cue to write the Buttondown newsletter. Runs after the site
-      # is published, so the links in it already show the new figures.
+      # them. For a new quarter, newsletter_draft.py also saves the newsletter
+      # in Buttondown as a DRAFT (never sent) and says so in a comment on the
+      # issue. Runs after the site is published, so its links show the new
+      # figures. BUTTONDOWN_API_KEY is a repository secret (Settings > Secrets
+      # and variables > Actions); without it the comment holds the email text.
       - name: Tell the owner about new CMS files
         id: newfiles
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
+          BUTTONDOWN_API_KEY: ${{ secrets.BUTTONDOWN_API_KEY }}
         run: |
           python scripts/new_files_report.py --before "$RUNNER_TEMP/manifest-before.json" \
             --title-file new_files_title.txt --body-file new_files.md --owner "${{ github.repository_owner }}"
           if [ -s new_files.md ]; then
             gh label create new-cms-file --color 0E8A16 --description "CMS posted a new pricing file: time for the newsletter" --force
-            gh issue create --title "$(cat new_files_title.txt)" --label new-cms-file --body-file new_files.md
+            issue=$(gh issue create --title "$(cat new_files_title.txt)" --label new-cms-file --body-file new_files.md)
+            draft_ok=yes
+            python scripts/newsletter_draft.py --before "$RUNNER_TEMP/manifest-before.json" \
+              --note-file newsletter_note.md || draft_ok=no
+            if [ -s newsletter_note.md ]; then
+              gh issue comment "$issue" --body-file newsletter_note.md
+            fi
+            [ "$draft_ok" = yes ]
           fi
 
       # Lists labeler codes FDA/GLEIF can't confirm, ticker problems and
