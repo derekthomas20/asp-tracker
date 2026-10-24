@@ -19,7 +19,7 @@
       "name": "Trastuzumab (IV)",
       "molecule": "Trastuzumab",
       "dose": {"basis": "per kg", "value": 6, "weight_kg": 80, "bsa_m2": 1.9},
-      "dose_source": "Prototype default (reference/ncr-calculator.html)",
+      "dose_source": "Herceptin label, breast cancer and gastric cancer: 6 mg/kg every 3 weeks after an 8 mg/kg first dose",
       "multi_dose": [{"units": 42}],
       "example_prices": {
         "Herceptin": {"150": 1150},
@@ -37,7 +37,7 @@
       "name": "Bevacizumab",
       "molecule": "Bevacizumab",
       "dose": {"basis": "per kg", "value": 15, "weight_kg": 80, "bsa_m2": 1.9},
-      "dose_source": "Prototype default (reference/ncr-calculator.html)",
+      "dose_source": "Avastin label, non-small cell lung, cervical and ovarian cancer: 15 mg/kg every 3 weeks",
       "example_prices": {
         "Avastin": {"100": 690, "400": 2760},
         "Alymsys": {"100": 230, "400": 920},
@@ -53,7 +53,7 @@
       "name": "Rituximab (IV)",
       "molecule": "Rituximab",
       "dose": {"basis": "per m2", "value": 375, "weight_kg": 80, "bsa_m2": 1.9},
-      "dose_source": "Prototype default (reference/ncr-calculator.html)",
+      "dose_source": "Rituxan label, non-Hodgkin lymphoma: 375 mg/m2",
       "example_prices": {
         "Rituxan": {"100": 880, "500": 4400},
         "Truxima": {"100": 440, "500": 2200},
@@ -66,7 +66,7 @@
       "name": "Pegfilgrastim",
       "molecule": "Pegfilgrastim",
       "dose": {"basis": "flat", "value": 6, "weight_kg": 80, "bsa_m2": 1.9},
-      "dose_source": "Prototype default (reference/ncr-calculator.html)",
+      "dose_source": "Neulasta label: 6 mg once per chemotherapy cycle",
       "example_prices": {
         "Neulasta": {"6": 3900},
         "Fulphila": {"6": 720},
@@ -82,7 +82,7 @@
       "name": "Infliximab",
       "molecule": "Infliximab",
       "dose": {"basis": "per kg", "value": 5, "weight_kg": 80, "bsa_m2": 1.9},
-      "dose_source": "Prototype default (reference/ncr-calculator.html)",
+      "dose_source": "Remicade label, Crohn's disease and ulcerative colitis: 5 mg/kg at weeks 0, 2 and 6, then every 8 weeks",
       "example_prices": {
         "Remicade": {"100": 700},
         "Infliximab": {"100": 300},
