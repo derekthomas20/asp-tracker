@@ -6,8 +6,8 @@
     "(your Buttondown username, the part after buttondown.com/). Until then the build prints a NOTE.",
     "owner_bio is plain text, one or two sentences: who you are and why you built the site."
   ],
-  "owner_name": "",
-  "owner_bio": "",
-  "contact_email": "",
+  "owner_name": "an independent analyst who works in the pharmaceutical industry",
+  "owner_bio": "Rxcurve is a personal project: it is not affiliated with, funded by or reviewed by any drug maker, including the analyst's employer. Every figure comes from CMS files by code, never from private or company data.",
+  "contact_email": "hello@therxcurve.com",
   "buttondown_username": "therxcurve"
 }
