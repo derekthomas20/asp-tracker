@@ -25,6 +25,9 @@
 <link rel="icon" href="{{ root }}static/favicon-16.png" type="image/png" sizes="16x16">
 <link rel="apple-touch-icon" href="{{ root }}static/apple-touch-icon.png" sizes="180x180">
 <link rel="stylesheet" href="{{ root }}style.css?v={{ asset_version }}">
+{# A theme picked with the header button, applied before the page draws so it
+   never flashes the other theme. No pick: follow the system setting. #}
+<script>try { var t = localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -38,6 +41,7 @@
              aria-autocomplete="list" aria-controls="site-suggest" aria-expanded="false">
       <ul class="suggest" id="site-suggest" role="listbox" hidden></ul>
     </form>
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch to dark mode" hidden><span class="icon-moon" aria-hidden="true">☾</span><span class="icon-sun" aria-hidden="true">☀</span></button>
   </div>
   <div class="dateline">
     <span>Medicare Part B payment limits</span>
@@ -77,7 +81,7 @@
 </section>
 <footer class="site-footer">
   <div class="wrap">
-    <a class="site-footer-brand wordmark" href="{{ root }}index.html"><img src="{{ root }}static/logo.svg" alt=""><span><span class="rx">Rx</span><span class="curve">curve</span></span></a>
+    <a class="site-footer-brand wordmark" href="{{ root }}index.html"><img class="logo-on-light" src="{{ root }}static/logo.svg" alt=""><img class="logo-on-dark" src="{{ root }}static/logo-dark.svg" alt=""><span><span class="rx">Rx</span><span class="curve">curve</span></span></a>
     <p>Rxcurve is built from the <a href="{{ source_page }}">CMS Medicare Part B ASP pricing files</a>. Latest quarter: {{ latest_q|quarter }}.
     Not affiliated with CMS. Listing in the file does not mean Medicare covers a drug. <a href="{{ root }}about.html">About this data</a>{% if site.show_owner %} · <a href="{{ root }}about.html#contact">Contact</a>{% endif %}</p>
   </div>
@@ -130,6 +134,26 @@ document.addEventListener("DOMContentLoaded", function () {
   });
   document.addEventListener("click", function (e) { if (!input.form.contains(e.target)) close(); });
 });
+
+// Theme button: switches between light and dark and remembers the choice in
+// this browser. Charts listen for "rxcurve:theme" and redraw in the new colors.
+// Hidden without JavaScript, where the page simply follows the system setting.
+(function () {
+  var html = document.documentElement;
+  var btn = document.getElementById("theme-toggle");
+  var system = window.matchMedia("(prefers-color-scheme: dark)");
+  function dark() { return html.dataset.theme ? html.dataset.theme === "dark" : system.matches; }
+  function label() { btn.setAttribute("aria-label", dark() ? "Switch to light mode" : "Switch to dark mode"); }
+  function changed() { label(); document.dispatchEvent(new Event("rxcurve:theme")); }
+  btn.hidden = false;
+  label();
+  btn.addEventListener("click", function () {
+    html.dataset.theme = dark() ? "light" : "dark";
+    try { localStorage.setItem("theme", html.dataset.theme); } catch (e) {}
+    changed();
+  });
+  system.addEventListener("change", function () { if (!html.dataset.theme) changed(); });
+})();
 </script>
 {% block scripts %}{% endblock %}
 {# Visitor counts (Cloudflare Web Analytics): no cookies, no individual tracking.

@@ -433,7 +433,7 @@ def build_groups(group_rows: list[dict], latest: dict[str, dict], recent_limits,
                              key=lambda e: (e["limit"] is None, e["limit"] or 0, e["code"]))
         for i, e in enumerate(bio_entries):
             e["color_var"] = GROUP_SHADES[i % len(GROUP_SHADES)]
-        ref_entry["color_var"] = "--color-navy"
+        ref_entry["color_var"] = "--color-ink"
         compared = [e for e in bio_entries if e["vs_ref"] is not None]
         lowest = min(compared, key=lambda e: e["vs_ref"]) if compared else None
         groups.append({

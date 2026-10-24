@@ -14,12 +14,29 @@
     return "$" + v.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
   }
 
-  window.drawLimitChart = function (canvas, labels, rawValues, opts) {
+  // Every chart drawn on the page, so the theme button can redraw them in
+  // the new theme's colors (each draw reads the colors from the stylesheet).
+  var drawn = [];
+  function redrawable(draw) {
+    return function (canvas) {
+      if (canvas) drawn.push({ draw: draw, args: arguments });
+      return draw.apply(null, arguments);
+    };
+  }
+  document.addEventListener("rxcurve:theme", function () {
+    drawn.forEach(function (d) {
+      var old = window.Chart && Chart.getChart(d.args[0]);
+      if (old) old.destroy();
+      d.draw.apply(null, d.args);
+    });
+  });
+
+  window.drawLimitChart = redrawable(function (canvas, labels, rawValues, opts) {
     if (!window.Chart || !canvas) return;
     opts = opts || {};
     var values = rawValues.map(function (v) { return v === null ? null : Number(v); });
     var last = values.length - 1;
-    var line = css(opts.colorVar || "--color-navy");
+    var line = css(opts.colorVar || "--color-ink");
     var muted = css("--color-neutral-700");
     var text = css("--color-text");
     var divider = css("--color-divider");
@@ -84,12 +101,12 @@
     }
     // Wait for the web font so the axis labels are measured in it.
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw); else draw();
-  };
+  });
 
-  // Several lines on one chart: the reference product as a thick navy line,
+  // Several lines on one chart: the reference product as a thick navy line (ink in dark mode),
   // biosimilars in teal, light teal, then colors that differ in lightness. series: [{label, values, colorVar, width, dash}]
   // opts.format "percent" draws shares (0-100%) with a dot on every year.
-  window.drawGroupChart = function (canvas, labels, series, opts) {
+  window.drawGroupChart = redrawable(function (canvas, labels, series, opts) {
     if (!window.Chart || !canvas) return;
     opts = opts || {};
     var pct = opts.format === "percent";
@@ -154,7 +171,7 @@
       });
     }
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw); else draw();
-  };
+  });
 
   // Short dollar amounts for bar axes: $1.2B, $450M, $12K.
   function shortDollars(v) {
@@ -169,7 +186,7 @@
   // Stacked bars, one stack per year. series: [{label, values, colorVar}],
   // drawn bottom to top in the order given. opts.format: "dollars" or "percent"
   // (percent stacks run to 100).
-  window.drawStackedBars = function (canvas, labels, series, opts) {
+  window.drawStackedBars = redrawable(function (canvas, labels, series, opts) {
     if (!window.Chart || !canvas) return;
     opts = opts || {};
     var pct = opts.format === "percent";
@@ -218,5 +235,5 @@
       });
     }
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw); else draw();
-  };
+  });
 })();

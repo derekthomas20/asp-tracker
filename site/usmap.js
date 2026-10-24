@@ -19,7 +19,8 @@
     var n = parseInt(hex.replace("#", ""), 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
-  // t in [0, 1] -> color along light teal, teal, navy.
+  // t in [0, 1] -> color along the --map-low, --map-mid, --map-high stops
+  // (pale to navy on the light page; dark to bright in dark mode).
   function ramp(t, stops) {
     var seg = Math.min(stops.length - 2, Math.floor(t * (stops.length - 1)));
     var u = t * (stops.length - 1) - seg;
@@ -46,14 +47,20 @@
   window.drawStateMap = function (container, data, opts) {
     if (!container || !window.d3 || !window.topojson) return;
     opts = opts || {};
-    var stops = [hexToRgb("#e6f2f0"), hexToRgb(css("--color-teal") || "#0f7c7a"), hexToRgb(css("--color-navy") || "#0f2a3d")];
-    var empty = "#e4e6e1";
+    var stops, empty;
     var svg = container.querySelector("svg.us-map");
     var info = container.querySelector(".map-info");
     var legendLo = container.querySelector(".map-legend .lo");
     var legendHi = container.querySelector(".map-legend .hi");
     var bar = container.querySelector(".map-legend .bar");
-    bar.style.background = "linear-gradient(to right, " + [0, 0.5, 1].map(function (t) { return ramp(t, stops); }).join(", ") + ")";
+    function colors() {
+      stops = [css("--map-low") || "#e6f2f0", css("--map-mid") || "#0f7c7a", css("--map-high") || "#0f2a3d"].map(hexToRgb);
+      empty = css("--map-empty") || "#e4e6e1";
+      bar.style.background = "linear-gradient(to right, " + [0, 0.5, 1].map(function (t) { return ramp(t, stops); }).join(", ") + ")";
+    }
+    colors();
+    // The theme button: repaint in the new theme's colors.
+    document.addEventListener("rxcurve:theme", function () { colors(); paint(); });
     var paths = {};
     var measure = "services";
     var defaultInfo = info.textContent;
