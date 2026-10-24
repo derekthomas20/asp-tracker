@@ -40,6 +40,10 @@ jobs:
       - name: Install requirements
         run: pip install -r requirements.txt
 
+      # Kept so new_files_report.py can tell which CMS files this run added.
+      - name: Remember which CMS files we already have
+        run: cp data/manifest.json "$RUNNER_TEMP/manifest-before.json"
+
       # The two download steps may fail (a CMS or Google outage, a single
       # broken link). Whatever they did save is still committed and the site
       # is still rebuilt; the job is marked failed at the end so you hear
@@ -109,6 +113,23 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+      # When CMS posted a new or revised ASP pricing file, open an issue
+      # (labelled new-cms-file) that @mentions the owner, so GitHub emails
+      # them: the cue to write the Buttondown newsletter. Runs after the site
+      # is published, so the links in it already show the new figures.
+      - name: Tell the owner about new CMS files
+        id: newfiles
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/new_files_report.py --before "$RUNNER_TEMP/manifest-before.json" \
+            --title-file new_files_title.txt --body-file new_files.md --owner "${{ github.repository_owner }}"
+          if [ -s new_files.md ]; then
+            gh label create new-cms-file --color 0E8A16 --description "CMS posted a new pricing file: time for the newsletter" --force
+            gh issue create --title "$(cat new_files_title.txt)" --label new-cms-file --body-file new_files.md
+          fi
+
       # Lists labeler codes FDA/GLEIF can't confirm, ticker problems and
       # unassigned labelers. Never blocks publishing the site.
       - name: Check company mapping
@@ -147,8 +168,9 @@ jobs:
           fi
 
       - name: Report download problems
-        if: steps.scrape.outcome == 'failure' || steps.cmsdata.outcome == 'failure' || steps.groups.outcome == 'failure' || steps.companysources.outcome == 'failure' || steps.companies.outcome == 'failure'
+        if: steps.scrape.outcome == 'failure' || steps.cmsdata.outcome == 'failure' || steps.groups.outcome == 'failure' || steps.companysources.outcome == 'failure' || steps.companies.outcome == 'failure' || steps.newfiles.outcome == 'failure'
         run: |
+          echo "new CMS file notice: ${{ steps.newfiles.outcome }}"
           echo "scrape.py: ${{ steps.scrape.outcome }}"
           echo "fetch_cms_data.py: ${{ steps.cmsdata.outcome }}"
           echo "fetch_groups.py: ${{ steps.groups.outcome }}"

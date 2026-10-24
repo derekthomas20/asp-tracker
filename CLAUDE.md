@@ -184,7 +184,11 @@ started by hand from the repository's **Actions** tab ("Run workflow"). It:
    `reference/biosimilar_groups/` or `reference/company_sources/` would be
    changed or deleted.
 4. Runs `scripts/parse.py` and `scripts/build_site.py`, then publishes
-   `public/` to GitHub Pages with the official Pages actions.
+   `public/` to GitHub Pages with the official Pages actions. If
+   `scrape.py` added any CMS file, `scripts/new_files_report.py` writes a
+   notice and the workflow opens an issue labelled `new-cms-file` that
+   @mentions the owner (so GitHub emails them): the cue to write the
+   Buttondown newsletter. No email is sent to subscribers automatically.
 5. Runs `scripts/companies_report.py` and opens, updates or closes the
    "Company mapping needs review" issue (label `company-review`). The
    issue gets a comment, which GitHub emails, only when its list changes.
