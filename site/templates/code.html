@@ -4,7 +4,7 @@
 
 <div class="drug">
   <article>
-    <span class="kicker cyan">HCPCS {{ p.code }} · per {{ p.dosage }}</span>
+    <span class="kicker cyan">HCPCS <span data-copy>{{ p.code }}</span> · per {{ p.dosage }}</span>
     <h1>{{ p.name }}</h1>
     {% if p.product %}<p class="cms-desc">CMS description: {{ p.description }}</p>{% endif %}
     {% if p.products %}
@@ -152,7 +152,7 @@ CMS lists each NDC in the 11-digit 5-4-2 form; claims use the same 11 digits wit
   <tr>
     <td data-label="Product"><span class="strong">{{ n.drug_name or "—" }}</span>{% for f in n.fda %}<span class="cms-desc">{{ f.package_description }}</span>{% endfor %}</td>
     <td data-label="Labeler">{{ n.labeler_name or "—" }}</td>
-    <td data-label="NDC">{{ n.ndc }}{% if n.ndc_claim %}<span class="cms-desc">Claim: {{ n.ndc_claim }}</span>{% endif %}{% for f in n.fda %}<span class="cms-desc">FDA 10-digit: {{ f.ndc_10 }}</span>{% endfor %}{% if n.ndc_claim and not n.fda %}<span class="cms-desc">Not in the FDA NDC Directory</span>{% endif %}</td>
+    <td data-label="NDC"><div class="ndc-list"><span data-copy>{{ n.ndc }}</span>{% if n.ndc_claim %}<span class="cms-desc">Claim: <span data-copy>{{ n.ndc_claim }}</span></span>{% endif %}{% for f in n.fda %}<span class="cms-desc">FDA 10-digit: <span data-copy>{{ f.ndc_10 }}</span></span>{% endfor %}{% if n.ndc_claim and not n.fda %}<span class="cms-desc">Not in the FDA NDC Directory</span>{% endif %}</div></td>
     <td data-label="Units / pkg" class="num">{{ n.bill_units_pkg or "—" }}</td>
     <td data-label="Limit / pkg" class="num strong">{{ n.per_package|money }}</td>
   </tr>

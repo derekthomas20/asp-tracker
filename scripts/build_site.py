@@ -1548,7 +1548,8 @@ def main() -> int:
         saves = None
         if r["payment_limit"] is not None:
             saves = r["payment_limit"] * (usual_co - co) / 100
-        reduced.append({**code_row(r), "co": co, "saves": saves})
+        reduced.append({**code_row(r), "co": co, "saves": saves,
+                        "spark": Markup(sparkline(recent_limits(r["hcpcs_code"])))})
     reduced.sort(key=lambda x: (x["co"], x["code"]))
     # CMS also writes "Inflation-adjusted coinsurance" in the notes. If the
     # note and the percentage ever disagree, say so in the build output.
@@ -1847,7 +1848,7 @@ def main() -> int:
               f"{len(reduced):,} Medicare Part B drugs with patient coinsurance below the usual "
               f"{plain_percent(str(usual_co))} in the CMS {q} file, and how much less the patient pays "
               "per billing unit."),
-          co=coinsurance)
+          co=coinsurance, spark_quarters=SPARK_QUARTERS)
     write("movers.html", "movers.html",
           seo(f"Biggest Medicare Part B payment limit changes, {q}",
               f"The {TOP_N} largest increases and decreases in Medicare Part B drug payment limits from "

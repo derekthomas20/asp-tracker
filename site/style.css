@@ -262,6 +262,17 @@ button, .button {
 }
 button:hover, .button:hover { background: var(--color-teal-dark); color: var(--color-on-teal); }
 
+/* Copy buttons next to codes and NDCs (added by base.html's script) */
+button.copy {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.02em; text-transform: none;
+  padding: 1px 6px; margin-left: 6px; vertical-align: 1px;
+  background: transparent; color: var(--color-teal); border: 1px solid var(--color-border);
+}
+button.copy:hover { background: var(--color-teal-tint); color: var(--color-teal-dark); }
+button.copy.done { color: var(--color-up); border-color: var(--color-up); }
+/* NDCs never break across lines; on phones the formats stack on the right. */
+.ndc-list [data-copy] { white-space: nowrap; }
+
 /* Segmented control ("View as" in the design) */
 .seg-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; font-size: 13px; margin-bottom: var(--space-4); }
 .seg { display: inline-flex; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
@@ -445,6 +456,14 @@ details summary { cursor: pointer; color: var(--color-teal); font-weight: 600; f
 /* ── Tables (the design's ledger style) ──────────────────────────────── */
 
 .table-wrap { overflow-x: auto; margin: 0 0 var(--space-3); }
+/* Column headings stay on screen while a long table scrolls. Sticky needs
+   the wrapper not to scroll sideways, so base.html's script adds "fits"
+   only to tables narrower than their space; wide ones keep scrolling. */
+.table-wrap.fits { overflow-x: visible; }
+.table-wrap.fits th {
+  position: sticky; top: 0; z-index: 1; background: var(--color-bg);
+  box-shadow: inset 0 -1px 0 var(--color-border);
+}
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th {
   text-align: left; font-size: 11px; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase;

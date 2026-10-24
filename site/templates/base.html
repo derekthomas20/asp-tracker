@@ -135,6 +135,47 @@ document.addEventListener("DOMContentLoaded", function () {
   document.addEventListener("click", function (e) { if (!input.form.contains(e.target)) close(); });
 });
 
+// Copy buttons: every element marked data-copy (codes, NDCs) gets a small
+// button that copies its text. No clipboard (or no JavaScript): no buttons.
+(function () {
+  if (!navigator.clipboard) return;
+  document.querySelectorAll("[data-copy]").forEach(function (el) {
+    var text = el.textContent.trim();
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "copy";
+    btn.textContent = "Copy";
+    btn.setAttribute("aria-label", "Copy " + text);
+    btn.addEventListener("click", function () {
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = "Copied";
+        btn.classList.add("done");
+        setTimeout(function () { btn.textContent = "Copy"; btn.classList.remove("done"); }, 1500);
+      });
+    });
+    el.after(btn);
+  });
+})();
+
+// Sticky table headings: mark the tables that fit their space without
+// scrolling sideways (see .table-wrap.fits); recheck when the window or the
+// web font changes their width.
+(function () {
+  var wraps = document.querySelectorAll(".table-wrap");
+  if (!wraps.length) return;
+  function check() {
+    wraps.forEach(function (w) {
+      w.classList.remove("fits");
+      if (w.scrollWidth <= w.clientWidth) w.classList.add("fits");
+    });
+  }
+  var timer;
+  window.addEventListener("resize", function () { clearTimeout(timer); timer = setTimeout(check, 150); });
+  document.addEventListener("toggle", check, true);  // tables inside <details> have no width until opened
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(check);
+  check();
+})();
+
 // Theme button: switches between light and dark and remembers the choice in
 // this browser. Charts listen for "rxcurve:theme" and redraw in the new colors.
 // Hidden without JavaScript, where the page simply follows the system setting.

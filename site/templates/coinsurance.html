@@ -7,12 +7,13 @@ For the codes below, CMS lists a lower percentage and notes it as “inflation-a
 price rises faster than inflation. See the <a href="{{ rebate_page }}">Medicare Inflation Rebate Program</a>.</p>
 <p class="note">Sorted by coinsurance, lowest first. “Patient pays less” is the payment limit times the difference between {{ co.usual|plain_percent }} and the code’s coinsurance,
 for one billing unit, rounded to the cent. What a patient actually pays also depends on other coverage they have.
-Codes with 0% coinsurance are not listed: CMS does not note them as inflation-adjusted.</p>
+Codes with 0% coinsurance are not listed: CMS does not note them as inflation-adjusted.
+The trend lines show each code’s payment limit for the last {{ spark_quarters }} quarters, with a dot on {{ latest_q|quarter }}.</p>
 
 {% if co.rows %}
 <div class="table-wrap">
 <table class="stack">
-  <thead><tr><th>Code</th><th>Drug</th><th>Billing unit</th><th class="num">Payment limit</th><th class="num">Coinsurance</th><th class="num">Patient pays less</th></tr></thead>
+  <thead><tr><th>Code</th><th>Drug</th><th>Billing unit</th><th class="num">Payment limit</th><th>{{ spark_quarters }} quarters</th><th class="num">Coinsurance</th><th class="num">Patient pays less</th></tr></thead>
   <tbody>
   {% for r in co.rows %}
     <tr>
@@ -20,6 +21,7 @@ Codes with 0% coinsurance are not listed: CMS does not note them as inflation-ad
       <td data-label="Drug"><a class="name" href="{{ root }}codes/{{ r.code }}.html">{{ r.name }}</a>{% if r.product %}<span class="cms-desc">{{ r.description }}</span>{% endif %}</td>
       <td data-label="Billing unit" class="muted">{{ r.dosage }}</td>
       <td data-label="Payment limit" class="num">{{ r.limit|money }}</td>
+      <td data-label="{{ spark_quarters }} quarters" class="spark-cell">{{ r.spark }}</td>
       <td data-label="Coinsurance" class="num strong up">{{ r.co|plain_percent }}</td>
       <td data-label="Patient pays less" class="num">{{ r.saves|cents }}</td>
     </tr>
