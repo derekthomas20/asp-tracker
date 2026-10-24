@@ -29,7 +29,7 @@ So a change in a payment limit shows up months after the change in prices that c
 {% if site.show_owner %}
 <h2>Who runs Rxcurve</h2>
 <p>Rxcurve is run by {{ site.owner_name }}. {{ site.owner_bio }}</p>
-<p>Rxcurve carries no advertising and no sponsored content. Corrections are welcome: if a figure here doesn’t match the CMS file it came from, please say so.</p>
+<p>Rxcurve carries no advertising and no sponsored content.{% if site.cloudflare_analytics_token %} Visits are counted with Cloudflare Web Analytics, which sets no cookies and does not track individual visitors.{% endif %} Corrections are welcome: if a figure here doesn’t match the CMS file it came from, please say so.</p>
 
 <h2 id="contact">Contact</h2>
 <p>Email <a href="mailto:{{ site.contact_email }}">{{ site.contact_email }}</a>. For a figure, include the HCPCS code and quarter so it can be checked against the CMS file.</p>

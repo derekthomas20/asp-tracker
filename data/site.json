@@ -4,10 +4,13 @@
     "build_site.py shows the About page's 'Who runs Rxcurve' section once owner_name, owner_bio and",
     "contact_email are all filled in, and turns the sign-up form on once buttondown_username is filled in",
     "(your Buttondown username, the part after buttondown.com/). Until then the build prints a NOTE.",
-    "owner_bio is plain text, one or two sentences: who you are and why you built the site."
+    "owner_bio is plain text, one or two sentences: who you are and why you built the site.",
+    "cloudflare_analytics_token is the site token from Cloudflare > Web analytics > Manage site (the",
+    "\"token\" in its JS snippet; not a secret, every page shows it). Blank leaves visitor counting off."
   ],
   "owner_name": "an independent analyst who works in the pharmaceutical industry",
   "owner_bio": "Rxcurve is a personal project: it is not affiliated with, funded by or reviewed by any drug maker, including the analyst's employer. Every figure comes from CMS files by code, never from private or company data.",
   "contact_email": "hello@therxcurve.com",
-  "buttondown_username": "therxcurve"
+  "buttondown_username": "therxcurve",
+  "cloudflare_analytics_token": "5371762b2b694c7cafda9be708a7e4c1"
 }

@@ -1404,6 +1404,9 @@ def load_site_info(warn) -> dict:
     email = info["contact_email"]
     if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         raise SystemExit(f"STOPPED: {where}: contact_email {email!r} is not an email address.")
+    token = info.setdefault("cloudflare_analytics_token", "")
+    if token and not re.fullmatch(r"[0-9a-f]{32}", token):
+        raise SystemExit(f"STOPPED: {where}: cloudflare_analytics_token {token!r} should be the 32-character token.")
     if not user:
         warn(f"{where}: no buttondown_username, so the email sign-up form is shown switched off.")
     blank = [k for k in ("owner_name", "owner_bio", "contact_email") if not info[k]]

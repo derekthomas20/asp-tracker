@@ -65,8 +65,9 @@ data/
                      package sizes and payment limits come from asp.duckdb
   site.json          Hand-maintained: who runs the site, contact email, and
                      the Buttondown username for the email sign-up shown on
-                     every page. Blank fields leave their part of the site
-                     off. No numbers
+                     every page, and the Cloudflare Web Analytics site token
+                     (cookie-free visit counts). Blank fields leave their
+                     part of the site off. No numbers
   companies.json     Hand-maintained: which company owns each NDC labeler
                      code, patterns for each company's names in the CMS
                      crosswalk, and stock tickers (US and home market).

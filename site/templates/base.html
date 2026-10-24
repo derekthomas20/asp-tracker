@@ -132,5 +132,10 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 {% block scripts %}{% endblock %}
+{# Visitor counts (Cloudflare Web Analytics): no cookies, no individual tracking.
+   Off until data/site.json has a cloudflare_analytics_token. #}
+{% if site.cloudflare_analytics_token %}
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "{{ site.cloudflare_analytics_token }}"}'></script>
+{% endif %}
 </body>
 </html>
