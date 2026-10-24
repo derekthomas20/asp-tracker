@@ -965,13 +965,29 @@
       "sec_cik": 875045,
       "parent_legal_name": "Biogen Inc.",
       "lei": "W8J5WZB5IY3K0NDQT671",
-      "cms_names": "biogen",
+      "cms_names": "biogen|apellis",
       "labeler_codes": [
         {
           "code": "64406"
         },
         {
           "code": "59627"
+        },
+        {
+          "code": "73606",
+          "reviewed": {
+            "date": "2026-10-24",
+            "fda_names": [
+              "Apellis Pharmaceuticals, Inc."
+            ],
+            "gleif": [
+              [
+                "Apellis Pharmaceuticals, Inc.",
+                "254900HS0ZFRXXSB9D42",
+                null
+              ]
+            ]
+          }
         }
       ]
     },
@@ -1507,24 +1523,6 @@
       "labeler_codes": [
         {
           "code": "71336"
-        }
-      ]
-    },
-    {
-      "id": "apellis",
-      "name": "Apellis",
-      "us_listing": {
-        "ticker": "APLS",
-        "exchange": "Nasdaq"
-      },
-      "home_listing": null,
-      "sec_cik": null,
-      "parent_legal_name": "Apellis Pharmaceuticals, Inc.",
-      "lei": "254900HS0ZFRXXSB9D42",
-      "cms_names": "apellis",
-      "labeler_codes": [
-        {
-          "code": "73606"
         }
       ]
     },
