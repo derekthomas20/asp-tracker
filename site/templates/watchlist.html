@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{# "My codes": the visitor's watchlist. The list itself lives only in their
+   browser (rxWatch in base.html); the figures come from watchlist-data.js,
+   written by build_site.py. Without JavaScript the page explains itself. #}
+{% block content %}
+<span class="kicker cyan">Watchlist · {{ latest_q|quarter }}</span>
+<h1>My codes</h1>
+<p class="dek">Keep the codes you care about in one place: their {{ latest_q|quarter }} payment limits, the change from {{ prior_label }},
+and the last {{ spark_quarters }} quarters at a glance.</p>
+
+<div id="watch-app" hidden>
+  <div class="callout" id="shared" hidden>
+    <p>This link holds <b id="shared-n"></b> shared with you.</p>
+    <div class="ncr-actions">
+      <button type="button" id="shared-save">Save to my codes</button>
+      <a href="{{ root }}watchlist.html">Show my own codes instead</a>
+    </div>
+  </div>
+
+  <form class="search-form watch-add" id="watch-add" autocomplete="off">
+    <label for="watch-q">Add a code</label>
+    <div class="search-row">
+      <input id="watch-q" type="search" placeholder="Code or drug name, e.g. J9035 or bevacizumab"
+             aria-autocomplete="list" aria-controls="watch-suggest" aria-expanded="false">
+    </div>
+    <ul class="watch-suggest" id="watch-suggest" role="listbox" hidden></ul>
+  </form>
+
+  <p class="muted" id="watch-empty" hidden>No codes yet. Add one above, or press <b>☆ Watch this code</b> on any code page.</p>
+
+  <div class="table-wrap" id="watch-table" hidden>
+  <table class="stack">
+    <thead><tr><th>Code</th><th>Drug</th><th>Billing unit</th><th class="num">Payment limit</th><th class="num">vs. {{ prior_label }}</th><th>{{ spark_quarters }} quarters</th><th><span class="sr-only">Remove</span></th></tr></thead>
+    <tbody id="watch-rows"></tbody>
+  </table>
+  </div>
+
+  <div class="ncr-actions" id="watch-tools" hidden>
+    <button type="button" class="quiet" id="watch-share">Copy a link to this list</button>
+    <span class="ncr-toast" id="watch-toast" aria-live="polite"></span>
+  </div>
+  <p class="note">Your list is saved only in this browser, on this device: nothing is sent to Rxcurve or anyone else.
+  To move it to another device or share it, copy the link above and open it there.
+  Clearing your browser’s site data clears the list.</p>
+</div>
+<noscript><p class="callout">My codes needs JavaScript, because your list is kept in your browser. Every code also has its own page: see <a href="{{ root }}search.html">Search</a>.</p></noscript>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ root }}watchlist-data.js?v={{ asset_version }}"></script>
+<script>
+(function () {
+  var root = {{ root|tojson }};
+  var DATA = window.WATCH_DATA || {};
+  var app = document.getElementById("watch-app");
+  var rows = document.getElementById("watch-rows");
+  // A shared link (?codes=J9355,J2506) shows that list until it is saved.
+  var params = new URLSearchParams(location.search);
+  var shared = (params.get("codes") || "").split(",").map(function (c) { return c.trim().toUpperCase(); })
+    .filter(function (c, i, all) { return DATA[c] && all.indexOf(c) === i; });
+  var viewingShared = shared.length > 0;
+
+  function list() { return viewingShared ? shared : rxWatch.get().filter(function (c) { return DATA[c]; }); }
+
+  function cell(tag, label, cls, content) {
+    var td = document.createElement(tag);
+    if (label) td.setAttribute("data-label", label);
+    if (cls) td.className = cls;
+    if (content instanceof Node) td.appendChild(content); else if (content !== undefined) td.textContent = content;
+    return td;
+  }
+  function link(code, text, cls) {
+    var a = document.createElement("a");
+    a.href = root + "codes/" + code + ".html";
+    a.textContent = text;
+    if (cls) a.className = cls;
+    return a;
+  }
+
+  function render() {
+    var codes = list();
+    rows.innerHTML = "";
+    codes.forEach(function (code) {
+      var d = DATA[code];
+      var tr = document.createElement("tr");
+      tr.appendChild(cell("td", "Code", "code", link(code, code)));
+      var drug = cell("td", "Drug", "", link(code, d.n, "name"));
+      if (d.q) { var tag = document.createElement("span"); tag.className = "tag"; tag.textContent = "last listed " + d.q; drug.appendChild(document.createTextNode(" ")); drug.appendChild(tag); }
+      tr.appendChild(drug);
+      tr.appendChild(cell("td", "Billing unit", "muted", d.u));
+      tr.appendChild(cell("td", "Payment limit", "num strong", d.l));
+      tr.appendChild(cell("td", "vs. {{ prior_label }}", "num " + d.d, d.c === null ? "–" : d.c));
+      var spark = cell("td", "{{ spark_quarters }} quarters", "spark-cell " + d.d);
+      spark.innerHTML = d.s;  // SVG written by build_site.py
+      tr.appendChild(spark);
+      var rm = cell("td", "", "num");
+      if (!viewingShared) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "copy"; b.textContent = "Remove";
+        b.setAttribute("aria-label", "Remove " + code);
+        b.addEventListener("click", function () { rxWatch.toggle(code); render(); });
+        rm.appendChild(b);
+      }
+      tr.appendChild(rm);
+      rows.appendChild(tr);
+    });
+    document.getElementById("watch-table").hidden = !codes.length;
+    document.getElementById("watch-tools").hidden = !codes.length;
+    document.getElementById("watch-empty").hidden = codes.length > 0;
+    document.getElementById("watch-add").hidden = viewingShared;
+    document.getElementById("shared").hidden = !viewingShared;
+    if (viewingShared) document.getElementById("shared-n").textContent = shared.length + " code" + (shared.length > 1 ? "s" : "");
+    // Recheck sticky headings now that the table has rows.
+    window.dispatchEvent(new Event("resize"));
+  }
+
+  document.getElementById("shared-save").addEventListener("click", function () {
+    var mine = rxWatch.get();
+    shared.forEach(function (c) { if (mine.indexOf(c) === -1) mine.push(c); });
+    rxWatch.set(mine);
+    viewingShared = false;
+    history.replaceState(null, "", location.pathname);
+    render();
+  });
+
+  document.getElementById("watch-share").addEventListener("click", function () {
+    var url = location.origin + location.pathname + "?codes=" + list().join(",");
+    var toast = document.getElementById("watch-toast");
+    if (!navigator.clipboard) { toast.textContent = url; return; }
+    navigator.clipboard.writeText(url).then(function () {
+      toast.textContent = "Link copied";
+      setTimeout(function () { toast.textContent = ""; }, 2000);
+    });
+  });
+
+  // Add box: suggests codes (not companies) from the header search's list.
+  var input = document.getElementById("watch-q");
+  var sug = document.getElementById("watch-suggest");
+  function close() { sug.hidden = true; input.setAttribute("aria-expanded", "false"); }
+  function add(code) {
+    if (!rxWatch.has(code)) rxWatch.toggle(code);
+    input.value = ""; close(); render();
+  }
+  input.addEventListener("input", function () {
+    var words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    sug.innerHTML = "";
+    if (!words.length || !window.SEARCH_INDEX) return close();
+    var hits = [];
+    for (var i = 0; i < window.SEARCH_INDEX.length && hits.length < 8; i++) {
+      var r = window.SEARCH_INDEX[i];
+      if (r[4] || !DATA[r[0]]) continue;  // companies have a page of their own
+      var text = (r[0] + " " + r[1] + " " + r[3]).toLowerCase();
+      if (words.every(function (w) { return text.indexOf(w) !== -1; })) hits.push(r);
+    }
+    if (!hits.length) return close();
+    hits.forEach(function (r) {
+      var li = document.createElement("li");
+      var b = document.createElement("button");
+      b.type = "button"; b.setAttribute("role", "option");
+      [["code", r[0]], ["name", r[1]], ["price", rxWatch.has(r[0]) ? "added" : "+ add"]].forEach(function (p) {
+        var s = document.createElement("span"); s.className = p[0]; s.textContent = p[1]; b.appendChild(s);
+      });
+      b.addEventListener("click", function () { add(r[0]); });
+      li.appendChild(b); sug.appendChild(li);
+    });
+    sug.hidden = false; input.setAttribute("aria-expanded", "true");
+  });
+  // Enter adds the first suggestion.
+  document.getElementById("watch-add").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var first = sug.querySelector("button");
+    if (!sug.hidden && first) first.click();
+  });
+  input.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  document.addEventListener("click", function (e) { if (!e.target.closest || !e.target.closest("#watch-add")) close(); });
+
+  app.hidden = false;
+  render();
+})();
+</script>
+{% endblock %}

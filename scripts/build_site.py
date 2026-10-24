@@ -37,6 +37,9 @@ Pages written to public/:
     sitemap.xml         every page, for search engines, dated by its CMS posting
     robots.txt          lets search engines in and points them to sitemap.xml
     search-index.js    the list behind the header search suggestions
+    watchlist.html      "My codes": codes a visitor watches, saved in their
+                        browser only (not listed in sitemap.xml)
+    watchlist-data.js   each code's latest limit, change and trend line for it
 Also build/newsletter.json (not part of the site): the subject and Markdown
 body of a newsletter for the latest quarter, from site/templates/newsletter.md.
     charts.js           draws the Chart.js line charts in the site's style
@@ -118,6 +121,7 @@ NAV = [
     ("changes.html", "New & dropped"),
     ("companies.html", "Companies"),
     ("search.html", "Search"),
+    ("watchlist.html", "My codes"),
     ("downloads.html", "Downloads"),
     ("about.html", "About"),
 ]
@@ -1799,6 +1803,21 @@ def main() -> int:
         "window.SEARCH_INDEX = " + json.dumps(index, ensure_ascii=False, separators=(",", ":")) + ";\n",
         encoding="utf-8")
 
+    # "My codes" (watchlist.html) shows the codes a visitor watches. Their
+    # list stays in their browser; this file gives the page each code's
+    # figures, all formatted here so the page shows exactly what code pages do.
+    watch = {p["code"]: {"n": p["name"], "u": p["dosage"],
+                         "l": money(p["newest"]["payment_limit"]),
+                         "c": arrow_percent(p["qoq"]) if p["in_latest"] else None,
+                         "d": ("up" if p["qoq"] > 0 else "down" if p["qoq"] < 0 else "")
+                              if p["in_latest"] and p["qoq"] is not None else "",
+                         "s": sparkline(recent_limits(p["code"])) if p["in_latest"] else "",
+                         "q": None if p["in_latest"] else quarter_label(p["last_q"])}
+             for p in code_pages}
+    (OUT / "watchlist-data.js").write_text(
+        "window.WATCH_DATA = " + json.dumps(watch, ensure_ascii=False, separators=(",", ":")) + ";\n",
+        encoding="utf-8")
+
     env = make_env()
     # The Companies link appears once a company is published, and the
     # Biosimilars link once a group is; both come before Search.
@@ -1826,7 +1845,8 @@ def main() -> int:
 
     sitemap: list[tuple[str, date | None]] = []
 
-    def write(path: str, template: str, meta: dict, modified: date | None = None, **context) -> None:
+    def write(path: str, template: str, meta: dict, modified: date | None = None,
+              in_sitemap: bool = True, **context) -> None:
         """Render one page. meta is its seo() title and description; modified
         (default: the latest CMS posting) is its sitemap.xml date."""
         root = "../" * path.count("/")
@@ -1834,7 +1854,8 @@ def main() -> int:
                                                  canonical=page_url(path), **common, **context)
         (OUT / path).parent.mkdir(parents=True, exist_ok=True)
         (OUT / path).write_text(page, encoding="utf-8")
-        sitemap.append((path, modified or summary["posted"]))
+        if in_sitemap:
+            sitemap.append((path, modified or summary["posted"]))
 
     q, prior_label, first_label = quarter_label(latest_q), quarter_label(prior_q), quarter_label(quarters[0])
     write("index.html", "index.html",
@@ -1863,6 +1884,11 @@ def main() -> int:
     for p in code_pages:
         write(f"codes/{p['code']}.html", "code.html", code_seo(p, p["generic"], manifest["source_page"]),
               modified=p["newest"]["cms_posted_date"], p=p, co_usual=usual_co)
+    write("watchlist.html", "watchlist.html",
+          seo("My codes: a watchlist of Medicare Part B payment limits",
+              f"Keep a list of HCPCS codes and see their {q} payment limits, change from {prior_label} "
+              "and recent trend in one place. Saved only in your browser."),
+          in_sitemap=False, prior_label=prior_label, spark_quarters=SPARK_QUARTERS)
     write("search.html", "search.html",
           seo("Search Medicare Part B drug codes",
               f"Find any of {len(code_pages):,} HCPCS codes in the CMS ASP pricing files by code or drug name."),

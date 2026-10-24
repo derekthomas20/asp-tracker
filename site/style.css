@@ -170,6 +170,8 @@ code { font-size: 0.92em; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 var(--space-8); }
 
 .skip { position: absolute; left: -999px; }
+/* Text for screen readers only */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip:focus { left: 16px; top: 8px; background: var(--color-bg); padding: 4px 8px; z-index: 10; }
 
 /* Small text styles used throughout */
@@ -272,6 +274,31 @@ button.copy:hover { background: var(--color-teal-tint); color: var(--color-teal-
 button.copy.done { color: var(--color-up); border-color: var(--color-up); }
 /* NDCs never break across lines; on phones the formats stack on the right. */
 .ndc-list [data-copy] { white-space: nowrap; }
+
+/* Watchlist: the code page's Watch button and My codes' add box */
+.watch-row { display: flex; align-items: center; gap: var(--space-3); margin: 0; font-size: 14px; }
+button.watch {
+  font-size: 14px; padding: 6px 12px;
+  background: var(--color-surface); color: var(--color-teal); border: 1px solid var(--color-teal);
+}
+button.watch:hover { background: var(--color-teal-tint); color: var(--color-teal-dark); }
+button.watch[aria-pressed="true"] { background: var(--color-teal); color: var(--color-on-teal); }
+button.watch .star { font-size: 15px; }
+.watch-add { position: relative; }
+.watch-suggest {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 5;
+  background: var(--color-surface); box-shadow: var(--shadow-lg); border-radius: var(--radius-lg);
+  padding: var(--space-1) 0; list-style: none; margin: 0;
+}
+.watch-suggest button {
+  all: unset; box-sizing: border-box; width: 100%; cursor: pointer;
+  display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 10px; align-items: baseline;
+  padding: 8px 12px; font-size: 13px; color: var(--color-text);
+}
+.watch-suggest button:hover, .watch-suggest button:focus-visible { background: var(--color-teal-tint); }
+.watch-suggest .code { color: var(--color-text-2); }
+.watch-suggest .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.watch-suggest .price { color: var(--color-teal); font-weight: 600; }
 
 /* Segmented control ("View as" in the design) */
 .seg-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; font-size: 13px; margin-bottom: var(--space-4); }

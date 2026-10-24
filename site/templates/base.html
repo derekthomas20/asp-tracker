@@ -135,6 +135,25 @@ document.addEventListener("DOMContentLoaded", function () {
   document.addEventListener("click", function (e) { if (!input.form.contains(e.target)) close(); });
 });
 
+// Watchlist ("My codes"): the codes a visitor watches, kept in this browser
+// only (localStorage), never sent anywhere. Used by code pages and
+// watchlist.html. Returns an empty list where storage is blocked.
+window.rxWatch = {
+  get: function () {
+    try { var l = JSON.parse(localStorage.getItem("watchlist") || "[]"); return Array.isArray(l) ? l : []; }
+    catch (e) { return []; }
+  },
+  set: function (list) {
+    try { localStorage.setItem("watchlist", JSON.stringify(list)); return true; } catch (e) { return false; }
+  },
+  has: function (code) { return this.get().indexOf(code) !== -1; },
+  toggle: function (code) {
+    var l = this.get(), i = l.indexOf(code);
+    if (i === -1) l.push(code); else l.splice(i, 1);
+    return this.set(l) && i === -1;
+  }
+};
+
 // Copy buttons: every element marked data-copy (codes, NDCs) gets a small
 // button that copies its text. No clipboard (or no JavaScript): no buttons.
 (function () {

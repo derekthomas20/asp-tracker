@@ -7,6 +7,8 @@
     <span class="kicker cyan">HCPCS <span data-copy>{{ p.code }}</span> · per {{ p.dosage }}</span>
     <h1>{{ p.name }}</h1>
     {% if p.product %}<p class="cms-desc">CMS description: {{ p.description }}</p>{% endif %}
+    <p class="watch-row" hidden><button type="button" class="watch" id="watch" aria-pressed="false"><span class="star" aria-hidden="true">☆</span> <span class="watch-label">Watch this code</span></button>
+      <a href="{{ root }}watchlist.html">My codes</a></p>
     {% if p.products %}
     <p class="dek">Products billed under this code include {{ p.products|map(attribute="drug_name")|reject("none")|unique|list|join(", ") }}.</p>
     {% endif %}
@@ -224,6 +226,20 @@ See CMS’s <a href="{{ jw_faq }}">JW and JZ modifier FAQs</a>.</p>
 <script src="{{ root }}charts.js?v={{ asset_version }}"></script>
 <script>
 drawLimitChart(document.getElementById("chart"), {{ p.chart_labels|tojson }}, {{ p.chart_values|tojson }});
+// "Watch this code": adds it to My codes (saved in this browser only).
+(function () {
+  var code = {{ p.code|tojson }};
+  var btn = document.getElementById("watch");
+  function show() {
+    var on = rxWatch.has(code);
+    btn.setAttribute("aria-pressed", String(on));
+    btn.querySelector(".star").textContent = on ? "★" : "☆";
+    btn.querySelector(".watch-label").textContent = on ? "Watching" : "Watch this code";
+  }
+  btn.addEventListener("click", function () { rxWatch.toggle(code); show(); });
+  show();
+  btn.parentNode.hidden = false;
+})();
 {% if p.usage and p.usage.years|length > 1 %}
 drawStackedBars(document.getElementById("usage-chart"), {{ p.usage.chart_labels|tojson }}, {{ p.usage.chart_series|tojson }}, { format: "dollars" });
 {% endif %}
