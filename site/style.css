@@ -699,6 +699,25 @@ th[aria-sort="ascending"] button.sort::after { content: " ↑"; }
 .signup + .site-footer { margin-top: var(--space-6); }
 @media (max-width: 820px) { .signup .wrap { grid-template-columns: minmax(0, 1fr); } }
 
+/* Code alerts (code pages, My codes) and the Pro waitlist: smaller sign-up boxes in the page. */
+.alert-signup, .waitlist {
+  margin: var(--space-4) 0; padding: var(--space-3); max-width: 36rem;
+  border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface);
+}
+.alert-signup h2 { margin: 0 0 var(--space-2); font-size: 17px; }
+.alert-signup label, .waitlist label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.alert-signup input[type="email"], .waitlist input, .waitlist select, .waitlist textarea {
+  flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 8px 10px; min-height: 36px;
+  color: var(--color-text); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+}
+.waitlist input, .waitlist select, .waitlist textarea { width: 100%; box-sizing: border-box; margin-bottom: var(--space-3); }
+.waitlist textarea { min-height: 80px; resize: vertical; }
+.alert-signup input:focus-visible, .waitlist input:focus-visible, .waitlist select:focus-visible, .waitlist textarea:focus-visible { border-color: var(--color-teal); outline-offset: 0; }
+#alert-codes { font-weight: 600; color: var(--color-text); }
+.pro-list { max-width: 40rem; }
+.pro-list li { margin-bottom: var(--space-2); }
+
 /* ── Footer ───────────────────────────────────────────────────────────── */
 
 .site-footer { margin-top: 64px; }

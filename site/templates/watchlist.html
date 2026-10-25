@@ -39,8 +39,10 @@ and the last {{ spark_quarters }} quarters at a glance.</p>
     <button type="button" class="quiet" id="watch-share">Copy a link to this list</button>
     <span class="ncr-toast" id="watch-toast" aria-live="polite"></span>
   </div>
-  <p class="note">Your list is saved only in this browser, on this device: nothing is sent to Rxcurve or anyone else.
-  To move it to another device or share it, copy the link above and open it there.
+  <div id="watch-alerts" hidden>{% with alert_code = none %}{% include "alert_signup.html" %}{% endwith %}</div>
+  <p class="note">Your list is saved only in this browser, on this device. Nothing is sent to Rxcurve or anyone else
+  unless you sign up for code alerts, which sends your email address and these codes to Buttondown.
+  To move the list to another device or share it, copy the link above and open it there.
   Clearing your browser’s site data clears the list.</p>
 </div>
 <noscript><p class="callout">My codes needs JavaScript, because your list is kept in your browser. Every code also has its own page: see <a href="{{ root }}search.html">Search</a>.</p></noscript>
@@ -106,6 +108,8 @@ and the last {{ spark_quarters }} quarters at a glance.</p>
     });
     document.getElementById("watch-table").hidden = !codes.length;
     document.getElementById("watch-tools").hidden = !codes.length;
+    document.getElementById("watch-alerts").hidden = !codes.length || viewingShared;
+    if (window.rxAlertUpdate) window.rxAlertUpdate();
     document.getElementById("watch-empty").hidden = codes.length > 0;
     document.getElementById("watch-add").hidden = viewingShared;
     document.getElementById("shared").hidden = !viewingShared;

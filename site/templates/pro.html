@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{# Rxcurve Pro waitlist: what is being considered, and a Buttondown sign-up
+   tagged pro-waitlist with the visitor's role. Nothing is for sale yet. #}
+{% block content %}
+<span class="kicker cyan">Rxcurve Pro</span>
+<h1>Rxcurve Pro: tell us what would help</h1>
+<p class="dek">Rxcurve stays free: every payment limit, chart and page you see today. Rxcurve Pro would add tools for people who
+work with Part B drug prices every quarter. Nothing is for sale yet; the waitlist decides what gets built first.</p>
+
+<h2>Being considered</h2>
+<ul class="pro-list">
+  <li><strong>Alerts for your codes</strong> the day CMS posts a new or revised file, with each code’s new payment limit and change.</li>
+  <li><strong>Excel and CSV exports</strong> of your codes, a drug class, or every change between two quarters.</li>
+  <li><strong>Saved NCR scenarios</strong>: keep your own doses, contract prices and product mix in the NCR calculator.</li>
+  <li><strong>Full history</strong> for any set of codes, with every revised CMS file side by side.</li>
+  <li><strong>Company views</strong>: Medicare Part B payment limits and spending grouped by parent company and stock ticker.</li>
+</ul>
+<p class="note">Pro will not change what is free, and it will never include advertising, sponsored placements or paid rankings.
+Every figure will still come straight from the CMS files.</p>
+
+<h2 id="waitlist">Join the waitlist</h2>
+<form class="waitlist" method="post" action="https://buttondown.com/api/emails/embed-subscribe/{{ site.buttondown_username }}">
+  <label for="pro-email">Email address</label>
+  <input id="pro-email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
+  <label for="pro-role">What best describes your work? (optional)</label>
+  <select id="pro-role" name="metadata__role">
+    <option value="">Choose one</option>
+    <option>Billing or revenue cycle (practice, clinic, infusion center)</option>
+    <option>Hospital or health-system pharmacy</option>
+    <option>Manufacturer: market access, pricing or contracting</option>
+    <option>Consultant or analyst</option>
+    <option>Investor</option>
+    <option>Payer or policy</option>
+    <option>Other</option>
+  </select>
+  <label for="pro-wants">What would you use Rxcurve Pro for? (optional)</label>
+  <textarea id="pro-wants" name="metadata__wants" maxlength="500"></textarea>
+  <input type="hidden" name="embed" value="1">
+  <input type="hidden" name="tag" value="pro-waitlist">
+  <input type="hidden" name="metadata__signup_page" value="{{ current_page }}">
+  <button type="submit">Join the waitlist</button>
+  <p class="signup-note">Joining also adds you to Rxcurve’s email for new CMS pricing files. Sign-ups are handled by Buttondown;
+  your answers are read only by Rxcurve, to decide what to build. Unsubscribe any time.</p>
+</form>
+{% endblock %}

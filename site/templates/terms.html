@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{# Terms of use and privacy, in plain language. Lists only what the site
+   actually does; update it when a new service is added. #}
+{% block content %}
+<span class="kicker cyan">Terms</span>
+<h1>Terms and privacy</h1>
+<p class="dek">The short version: Rxcurve is information, not advice; check the CMS files before you rely on a figure; and Rxcurve collects as little about you as it can.</p>
+
+<h2>Using Rxcurve</h2>
+<ul>
+  <li><strong>Information only.</strong> Rxcurve is not billing, coding, legal, medical or investment advice. Payment limits are not a promise of what Medicare or any payer will pay.</li>
+  <li><strong>Check the source.</strong> Every figure is computed by a script from the <a href="{{ source_page }}">CMS ASP pricing files</a> and other public CMS data, as CMS published them. Mistakes can still happen, in the files or here. Check the CMS file before relying on a figure, and please <a href="{{ root }}about.html#contact">report anything that doesn’t match</a>.</li>
+  <li><strong>No warranty.</strong> Rxcurve is provided as it is, without warranties of any kind, and may change or stop at any time. Rxcurve is not responsible for decisions made using it.</li>
+  <li><strong>Not affiliated.</strong> Rxcurve is not affiliated with, endorsed by or connected to CMS, any other government agency or any drug maker. Company and product names belong to their owners and are used only to identify them.</li>
+  <li><strong>Reuse.</strong> The CMS data is public. You are welcome to quote and link to Rxcurve pages; please name Rxcurve and the CMS file as sources.</li>
+</ul>
+
+<h2>Privacy</h2>
+<p>Rxcurve has no accounts, no advertising and no tracking cookies. This is everything it collects or stores:</p>
+<ul>
+  <li><strong>Email sign-ups</strong> (new-file emails, code alerts, the Pro waitlist) are handled by <a href="https://buttondown.com/legal/privacy">Buttondown</a>. They store your email address, the page you signed up on, and anything you choose to add: your codes for alerts, or your role and comments on the waitlist. They are used only to send Rxcurve emails and decide what to build, and are never sold or shared. Every email has an unsubscribe link.</li>
+  <li><strong>My codes and the theme button</strong> are saved in your own browser (local storage), on your device. They are not sent to Rxcurve unless you sign up for code alerts.</li>
+  {% if site.cloudflare_analytics_token %}<li><strong>Visit counts</strong> come from <a href="https://www.cloudflare.com/web-analytics/">Cloudflare Web Analytics</a>, which counts page views without cookies and without identifying individual visitors.</li>{% endif %}
+  <li><strong>Hosting and fonts.</strong> Pages are served by GitHub Pages, and fonts by Google Fonts; like any web server, they receive your IP address and browser details when your browser asks for a file. Charts load a script from jsDelivr.</li>
+</ul>
+{% if site.show_owner %}<p>Questions, or want your sign-up data deleted? Email <a href="mailto:{{ site.contact_email }}">{{ site.contact_email }}</a>.</p>{% endif %}
+{% endblock %}

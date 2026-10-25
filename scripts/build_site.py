@@ -23,6 +23,8 @@ Pages written to public/:
     search.html         find a code by code or drug name
     downloads.html      the full history as one CSV (in downloads/)
     about.html          where the data comes from and what it means
+    terms.html          terms of use and privacy, in plain language
+    pro.html            Rxcurve Pro waitlist (only with a Buttondown username)
     companies.html      companies that make the drugs, from data/companies.json
     companies/X.html    (verified labeler codes only; see scripts/companies.py):
                         their codes, payment limit changes, and Medicare
@@ -1964,6 +1966,16 @@ def main() -> int:
               f"{first_label} to {q}), what a payment limit is, and what it does not mean."),
           sales_q=quarter_offset(latest_q, -2),
           last_download=last_download.date(), built=date.today(), first_q=quarters[0])
+
+    write("terms.html", "terms.html",
+          seo("Rxcurve terms and privacy",
+              "Rxcurve's terms of use and privacy in plain language: information, not advice; check the "
+              "CMS files; no accounts, no advertising, no tracking cookies."))
+    if common["site"]["buttondown_username"]:
+        write("pro.html", "pro.html",
+              seo("Rxcurve Pro waitlist",
+                  "Rxcurve stays free. Rxcurve Pro would add alerts for your codes, Excel exports, saved NCR "
+                  "scenarios and company views. Join the waitlist and say what would help."))
 
     write_sitemap(sitemap)
 

@@ -21,6 +21,7 @@
     <div class="chart"><canvas id="chart" role="img" aria-label="Line chart of the {{ p.code }} payment limit by quarter. The same numbers are in the table below."></canvas></div>
     <span class="chart-caption">Payment limit per {{ p.dosage }}, by effective quarter, {{ p.first_q|quarter }} to {{ p.last_q|quarter }}.
     Gaps mean the code was not in that quarter’s file, or CMS gave no payment limit.</span>
+    {% with alert_code = p.code %}{% include "alert_signup.html" %}{% endwith %}
   </article>
 
   <aside class="facts">

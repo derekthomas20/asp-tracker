@@ -1,14 +1,17 @@
 # Check CMS and the biosimilar_groups sheet for new files, save them to the
 # repository, then rebuild the website and publish it on GitHub Pages.
 #
-# Runs every Monday, and whenever you press "Run workflow" on the Actions tab.
+# Full run every Monday, and whenever you press "Run workflow" on the Actions
+# tab. Every evening it also checks CMS alone for a new or revised ASP file,
+# and rebuilds and publishes the site only when it finds one.
 # See "Automatic updates (GitHub Actions)" in CLAUDE.md.
 
 name: Update data and publish site
 
 on:
   schedule:
-    - cron: "17 9 * * 1"   # Mondays 09:17 UTC
+    - cron: "17 9 * * 1"   # Mondays 09:17 UTC: full run
+    - cron: "17 22 * * *"  # every day 22:17 UTC (evening in the US): CMS check only
   workflow_dispatch:
 
 permissions:
@@ -40,6 +43,17 @@ jobs:
       - name: Install requirements
         run: pip install -r requirements.txt
 
+      # The daily evening run only checks CMS; everything else waits for Monday.
+      - name: Decide what to run
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = schedule ] && [ "${{ github.event.schedule }}" = "17 22 * * *" ]; then
+            echo "full=false" >> "$GITHUB_OUTPUT"
+            echo "Daily check: CMS ASP files only."
+          else
+            echo "full=true" >> "$GITHUB_OUTPUT"
+          fi
+
       # Kept so new_files_report.py can tell which CMS files this run added.
       - name: Remember which CMS files we already have
         run: cp data/manifest.json "$RUNNER_TEMP/manifest-before.json"
@@ -55,11 +69,13 @@ jobs:
 
       - name: Download new or revised data.cms.gov usage files
         id: cmsdata
+        if: steps.mode.outputs.full == 'true'
         continue-on-error: true
         run: python scripts/fetch_cms_data.py
 
       - name: Download the biosimilar_groups sheet
         id: groups
+        if: steps.mode.outputs.full == 'true'
         continue-on-error: true
         run: python scripts/fetch_groups.py
 
@@ -68,6 +84,7 @@ jobs:
       # variables > Actions > Variables); SEC requires a contact email.
       - name: Download company check sources (FDA, GLEIF, SEC)
         id: companysources
+        if: steps.mode.outputs.full == 'true'
         continue-on-error: true
         env:
           SEC_CONTACT_EMAIL: ${{ vars.SEC_CONTACT_EMAIL }}
@@ -95,21 +112,37 @@ jobs:
           git commit -m "Add new source files (automatic update)"
           git push origin HEAD:main
 
+      # A daily check that found nothing new stops here.
+      - name: Anything to publish?
+        id: publish
+        run: |
+          if [ "${{ steps.mode.outputs.full }}" = true ] || ! cmp -s data/manifest.json "$RUNNER_TEMP/manifest-before.json"; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            echo "No new CMS file today."
+          fi
+
       - name: Build the database
+        if: steps.publish.outputs.go == 'true'
         run: python scripts/parse.py
 
       - name: Build the website
+        if: steps.publish.outputs.go == 'true'
         run: python scripts/build_site.py
 
       - name: Set up GitHub Pages
+        if: steps.publish.outputs.go == 'true'
         uses: actions/configure-pages@v5
 
       - name: Upload the website
+        if: steps.publish.outputs.go == 'true'
         uses: actions/upload-pages-artifact@v4
         with:
           path: public
 
       - name: Publish to GitHub Pages
+        if: steps.publish.outputs.go == 'true'
         id: deployment
         uses: actions/deploy-pages@v4
 
@@ -121,6 +154,7 @@ jobs:
       # figures. BUTTONDOWN_API_KEY is a repository secret (Settings > Secrets
       # and variables > Actions); without it the comment holds the email text.
       - name: Tell the owner about new CMS files
+        if: steps.publish.outputs.go == 'true'
         id: newfiles
         continue-on-error: true
         env:
@@ -145,6 +179,7 @@ jobs:
       # unassigned labelers. Never blocks publishing the site.
       - name: Check company mapping
         id: companies
+        if: steps.mode.outputs.full == 'true'
         continue-on-error: true
         run: python scripts/companies_report.py --issue-file company_review.md
 

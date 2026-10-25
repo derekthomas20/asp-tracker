@@ -72,6 +72,7 @@
       <div class="search-row">
         <input id="signup-email" name="email" type="email" autocomplete="email" required placeholder="you@example.com"{% if not site.buttondown_username %} disabled{% endif %}>
         <input type="hidden" name="embed" value="1">
+        <input type="hidden" name="metadata__signup_page" value="{{ current_page }}">
         <button type="submit"{% if not site.buttondown_username %} disabled{% endif %}>Sign up</button>
       </div>
       {% if not site.buttondown_username %}<p class="signup-note">Email updates start soon.</p>
@@ -83,7 +84,8 @@
   <div class="wrap">
     <a class="site-footer-brand wordmark" href="{{ root }}index.html"><img class="logo-on-light" src="{{ root }}static/logo.svg" alt=""><img class="logo-on-dark" src="{{ root }}static/logo-dark.svg" alt=""><span><span class="rx">Rx</span><span class="curve">curve</span></span></a>
     <p>Rxcurve is built from the <a href="{{ source_page }}">CMS Medicare Part B ASP pricing files</a>. Latest quarter: {{ latest_q|quarter }}.
-    Not affiliated with CMS. Listing in the file does not mean Medicare covers a drug. <a href="{{ root }}about.html">About this data</a>{% if site.show_owner %} · <a href="{{ root }}about.html#contact">Contact</a>{% endif %}</p>
+    Not affiliated with CMS. Listing in the file does not mean Medicare covers a drug. <a href="{{ root }}about.html">About this data</a>{% if site.show_owner %} · <a href="{{ root }}about.html#contact">Contact</a>{% endif %}
+    · <a href="{{ root }}terms.html">Terms and privacy</a>{% if site.buttondown_username %} · <a href="{{ root }}pro.html">Rxcurve Pro</a>{% endif %}</p>
   </div>
 </footer>
 <script src="{{ root }}search-index.js" defer></script>

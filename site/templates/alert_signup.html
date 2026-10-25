@@ -1,0 +1,44 @@
+{# "Email me when my codes change" (code pages and My codes). A Buttondown
+   sign-up tagged code-alerts that carries the visitor's codes as subscriber
+   metadata (metadata__codes), so later emails can cover them. On a code page
+   (alert_code set) the code is added to My codes first. Off until
+   data/site.json has a Buttondown username. #}
+{% if site.buttondown_username %}
+<form class="alert-signup" id="alert-signup" method="post"
+      action="https://buttondown.com/api/emails/embed-subscribe/{{ site.buttondown_username }}">
+  <h2>{% if alert_code %}Get an email when {{ alert_code }} changes{% else %}Email me when my codes change{% endif %}</h2>
+  <label for="alert-email">Email address</label>
+  <div class="search-row">
+    <input id="alert-email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
+    <button type="submit">Sign up</button>
+  </div>
+  <input type="hidden" name="embed" value="1">
+  <input type="hidden" name="tag" value="code-alerts">
+  <input type="hidden" name="metadata__signup_page" value="{{ current_page }}">
+  <input type="hidden" name="metadata__codes" id="alert-codes-field" value="{{ alert_code or '' }}">
+  <p class="signup-note">Code alerts are new. For now you get Rxcurve’s email when CMS posts a new pricing file;
+  your codes (<span id="alert-codes">{{ alert_code or '' }}</span>) are saved with your sign-up so those emails can cover them.
+  Sign-ups are handled by Buttondown, and your address and codes are used only for these emails. Unsubscribe any time.</p>
+</form>
+<script>
+// Runs once the page has loaded, after base.html defines rxWatch.
+document.addEventListener("DOMContentLoaded", function () {
+  var code = {{ (alert_code or '')|tojson }};
+  var form = document.getElementById("alert-signup");
+  var field = document.getElementById("alert-codes-field");
+  var shown = document.getElementById("alert-codes");
+  function codes() {
+    var l = rxWatch.get();
+    if (code && l.indexOf(code) === -1) l.push(code);
+    return l;
+  }
+  function update() { field.value = shown.textContent = codes().join(", "); }
+  window.rxAlertUpdate = update;  // My codes calls this when the list changes
+  update();
+  form.addEventListener("submit", function () {
+    if (code && !rxWatch.has(code)) rxWatch.toggle(code);
+    update();
+  });
+});
+</script>
+{% endif %}

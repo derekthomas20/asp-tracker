@@ -64,8 +64,9 @@ data/
                      prices. Products come from the biosimilar groups sheet;
                      package sizes and payment limits come from asp.duckdb
   site.json          Hand-maintained: who runs the site, contact email, and
-                     the Buttondown username for the email sign-up shown on
-                     every page, and the Cloudflare Web Analytics site token
+                     the Buttondown username for the email sign-ups (every
+                     page; code alerts tagged code-alerts with the visitor's
+                     codes; the Pro waitlist tagged pro-waitlist), and the Cloudflare Web Analytics site token
                      (cookie-free visit counts). Blank fields leave their
                      part of the site off. No numbers
   companies.json     Hand-maintained: which company owns each NDC labeler
@@ -171,8 +172,12 @@ pip install -r requirements.txt
 
 ## Automatic updates (GitHub Actions)
 
-`.github/workflows/update-site.yml` runs every Monday (09:17 UTC) and when
-started by hand from the repository's **Actions** tab ("Run workflow"). It:
+`.github/workflows/update-site.yml` runs in full every Monday (09:17 UTC)
+and when started by hand from the repository's **Actions** tab ("Run
+workflow"). Every day at 22:17 UTC it also runs a short check: only
+`scripts/scrape.py`, and only when that finds a new or revised ASP file does
+it rebuild, publish and open the `new-cms-file` issue (steps 4 below). The
+full run:
 
 1. Installs Python and `requirements.txt` on a fresh Linux machine.
 2. Runs `scripts/scrape.py`, `scripts/fetch_cms_data.py`,
