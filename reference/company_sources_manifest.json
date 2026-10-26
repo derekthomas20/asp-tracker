@@ -50,6 +50,12 @@
           "fetched_at": "2026-10-24T19:58:29+00:00",
           "sha256": "29311a5c3060b3871e4b37238e2d8f1b09254d6729c5cec84b340fe22e2db64c",
           "size_bytes": 22774
+        },
+        {
+          "local_path": "reference/company_sources/gleif/2026-10-26T100604Z_9ac56d81159a.json",
+          "fetched_at": "2026-10-26T10:06:04+00:00",
+          "sha256": "9ac56d81159a84b9c65f42496b2756d7fa46d966a725bce3115ca436b6f6b9c7",
+          "size_bytes": 22725
         }
       ]
     },
