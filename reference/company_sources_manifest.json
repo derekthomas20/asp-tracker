@@ -16,6 +16,13 @@
           "sha256": "7941edd2d8e814896eae79d5a48a45ce3259caaa7ef4a1841127cb591900e055",
           "size_bytes": 9707,
           "source_zip_sha256": "9e61bfc8f36546e293bcf0eac63075c61dd5710b12bab546997fefd32026e522"
+        },
+        {
+          "local_path": "reference/company_sources/fda_labelers/2026-11-02T102109Z_ef3b86d2675a.tsv",
+          "fetched_at": "2026-11-02T10:21:09+00:00",
+          "sha256": "ef3b86d2675af14eb40ca4d588b1c6960b47f7868e1a4b20ad0f0ab8a7f6d4e2",
+          "size_bytes": 9680,
+          "source_zip_sha256": "225c4a7a05154df69bc95a2b1a9031e03762ae99815392424e64ba57ff38f4d8"
         }
       ]
     },
@@ -56,6 +63,12 @@
           "fetched_at": "2026-10-26T10:06:04+00:00",
           "sha256": "9ac56d81159a84b9c65f42496b2756d7fa46d966a725bce3115ca436b6f6b9c7",
           "size_bytes": 22725
+        },
+        {
+          "local_path": "reference/company_sources/gleif/2026-11-02T102653Z_a33a527a8286.json",
+          "fetched_at": "2026-11-02T10:26:53+00:00",
+          "sha256": "a33a527a828609d1d910830d887b9277d89ff53275f3eaa9125c419fb0b3afca",
+          "size_bytes": 22834
         }
       ]
     },
@@ -68,6 +81,14 @@
           "sha256": "2b7ab9902289d8923ef8fcc7bb8e7c067eb1127b57526143bb04b39268bb322e",
           "size_bytes": 768789,
           "source_zip_sha256": "53ee8fbe0a0a64c9ffe399aa4f197a20bef9a7b8949252e28b744f16e2692504",
+          "crosswalk": "raw/2026/Q4/2026-09-17_october-2026-ndc-hcpcs-crosswalk-final.zip"
+        },
+        {
+          "local_path": "reference/company_sources/fda_packages/2026-11-02T102110Z_0b67a34bedbd.tsv",
+          "fetched_at": "2026-11-02T10:21:10+00:00",
+          "sha256": "0b67a34bedbd41219743a8eb496ac67eabf04580d6b0a47c4a155ce6ebf2d85e",
+          "size_bytes": 768281,
+          "source_zip_sha256": "225c4a7a05154df69bc95a2b1a9031e03762ae99815392424e64ba57ff38f4d8",
           "crosswalk": "raw/2026/Q4/2026-09-17_october-2026-ndc-hcpcs-crosswalk-final.zip"
         }
       ]
