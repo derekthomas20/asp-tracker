@@ -28,7 +28,7 @@ let saved = {};
 try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { saved = {}; }
 if (typeof saved !== "object" || Array.isArray(saved)) saved = {};
 const defaultSettings = () => ({medShare: 60, commPct: 125, seq: true, wasteBill: true, mdvReuse: false, erosion: 0, annual: 200,
-  is340: false, share340: 50, volBasis: "doses", annualUnits: null});
+  is340: false, share340: 50, site340: "hopd", volBasis: "doses", annualUnits: null});
 // A new comparison of your own starts with the first market's patient weight and BSA.
 const defaultPatient = () => ({weight: DATA.markets[0].dose.weight, bsa: DATA.markets[0].dose.bsa});
 
@@ -40,7 +40,7 @@ function makeProduct(d, e) {
   const override = typeof e.limit === "string" ? e.limit : null;
   return {
     key: d.key, name: d.name, hcpcs: d.hcpcs || "", ref: d.reference, status: d.status,
-    cmsLimit: d.cms_limit, cmsDosage: d.cms_dosage,
+    cmsLimit: d.cms_limit, cmsDosage: d.cms_dosage, bio: d.bio || null,
     exampleRebate: d.example_rebate_pct,
     limit: override !== null ? override : (d.cms_limit || ""),
     rebate: typeof e.rebate === "string" ? e.rebate : "",
@@ -155,17 +155,41 @@ const qty = v => v.toLocaleString("en-US", {maximumFractionDigits: 1});
 const share340 = () => state.settings.is340 ? Math.min(100, Math.max(0, n(state.settings.share340))) / 100 : 0;
 const needOther = () => share340() < 1, need340 = () => share340() > 0;
 const priced = k => (!needOther() || has(k.price)) && (!need340() || has(k.price340));
+// 340B in a hospital outpatient department. From January 1, 2027 the CY 2027
+// OPPS final rule (CMS-1850-F) pays Medicare ASP minus 28% for separately
+// payable drugs, biologicals and biosimilars bought under 340B, instead of
+// ASP plus 6%. These are policy figures from that rule, like the 2%
+// sequestration; the ASP itself is taken out of the CMS payment limit.
+const OPPS_340B_CUT = 0.28, ASP_ADDON = 0.06;
+const hopd340 = () => !!state.settings.is340 && state.settings.site340 === "hopd";
+// Medicare's 340B outpatient payment per billing unit, or null when it
+// can't be worked out. A drug's limit is 106% of its ASP (or of its WAC,
+// which the cut applies to the same way). A biosimilar's limit is its own
+// ASP plus 8% (or 6%) of the reference product's ASP; the reference's ASP is
+// its CMS limit ÷ 1.06, and the cut applies to the biosimilar's own ASP.
+function limit340(p) {
+  if (!hasLimit(p)) return null;
+  if (!p.bio) return n(p.limit) / (1 + ASP_ADDON) * (1 - OPPS_340B_CUT);
+  if (p.bio.ref_limit == null || p.bio.addon == null) return null;
+  const own = n(p.limit) - p.bio.addon / 100 * n(p.bio.ref_limit) / (1 + ASP_ADDON);
+  return own > 0 ? own * (1 - OPPS_340B_CUT) : null;
+}
+const no340Rate = p => hopd340() && need340() && hasLimit(p) && limit340(p) === null;
 // The product as the ported math sees it. With 340B off it is the product
 // itself. With 340B on, each package's price becomes its cost per package
 // (rebate already applied, so rebate is 0): the 340B price, the other
-// price, or the mix of the two by the 340B share.
+// price, or the mix of the two by the 340B share. In a hospital outpatient
+// department Medicare's payment is mixed the same way (medLimit): the 340B
+// outpatient rate for 340B doses, the payment limit for the others.
 function costed(p, channel) {
   if (!state.settings.is340) return p;
   const sh = channel === "other" ? 0 : channel === "340b" ? 1 : share340(), rf = 1 - n(p.rebate) / 100;
+  const l340 = hopd340() && sh > 0 ? limit340(p) : null;
   return Object.assign({}, p, {rebate: 0, pkgs: p.pkgs.map(k => Object.assign({}, k,
-    {price: (1 - sh) * n(k.price) * rf + sh * n(k.price340)}))});
+    {price: (1 - sh) * n(k.price) * rf + sh * n(k.price340)}))},
+    l340 === null ? {} : {medLimit: (1 - sh) * n(p.limit) + sh * l340});
 }
-const ready = p => p.include && hasLimit(p) && p.pkgs.some(used) && p.pkgs.every(k => !used(k) || priced(k));
+const ready = p => p.include && hasLimit(p) && !no340Rate(p) && p.pkgs.some(used) && p.pkgs.every(k => !used(k) || priced(k));
 const money = (v, d = 2) => (v < 0 ? "−$" : "$") + Math.abs(v).toLocaleString("en-US", {minimumFractionDigits: d, maximumFractionDigits: d});
 const signed = (v, d = 0) => (v > 0 ? "+" : "") + money(v, d);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[c]));
@@ -178,10 +202,11 @@ const BASIS = {mgkg: "per kg", mgm2: "per m²", flat: "flat"};
 const enterPrice = '<span class="ncr-enter">Enter price</span>';
 const enterLimit = '<span class="ncr-enter">Enter limit</span>';
 
-/* ---------- core math (unchanged from the prototype) ---------- */
-function blend(){const s=state.settings,ms=Math.min(100,Math.max(0,n(s.medShare)))/100;
-  return ms*(s.seq?1-0.8*0.02:1)+(1-ms)*n(s.commPct)/100;}
-function payPerUnit(p){return n(p.limit)*(1+n(state.settings.erosion)/100)*blend();}
+/* ---------- core math (from the prototype; payPerUnit splits Medicare
+   and commercial so Medicare can pay the 340B outpatient rate) ---------- */
+function payPerUnit(p){const s=state.settings,ms=Math.min(100,Math.max(0,n(s.medShare)))/100;
+  const med=p.medLimit!=null?p.medLimit:n(p.limit);
+  return (1+n(s.erosion)/100)*(ms*(s.seq?1-0.8*0.02:1)*med+(1-ms)*n(s.commPct)/100*n(p.limit));}
 function netPerUnit(p,k,m){const u=units(m,k);return u>0? n(k.price)*(1-n(p.rebate)/100)/u : 0;}
 function doseMg(m){const d=m.dose;return d.basis==='mgkg'?n(d.value)*n(d.weight):d.basis==='mgm2'?n(d.value)*n(d.bsa):n(d.value);}
 function doseUnits(m){const mg=doseMg(m);return mg>0?Math.ceil(mg/m.unitMg-1e-9):0;}
@@ -225,6 +250,7 @@ function renderControls() {
   $("volBasis").value = s.volBasis; $("annual").value = s[volField()] == null ? "" : s[volField()];
   $("annualL").textContent = VOL[volField()][0];
   $("is340").checked = s.is340; $("share340").value = s.share340;
+  $("site340").value = s.site340 === "office" ? "office" : "hopd";
   $("unitLine").innerHTML = m.custom
     ? `Billing units come from each product’s HCPCS code (CMS ${esc(DATA.quarter)}). Set each product’s dose under <b>Your prices by package</b>.`
     : `Billing unit: <b>${esc(m.unitLabel)}</b> (CMS ${esc(DATA.quarter)})`;
@@ -290,6 +316,7 @@ function renderPricing() {
       <label>Payment limit / unit $<input class="ncr-lim" type="number" step="0.001" min="0" inputmode="decimal" data-p="${p.key}" data-f="limit" value="${esc(p.limit)}"></label>
       <label>Rebate %<input class="ncr-reb" type="number" step="0.1" min="0" max="100" inputmode="decimal" data-p="${p.key}" data-f="rebate" value="${esc(p.rebate)}"></label>
       <span class="ncr-status" id="st-${p.key}"></span>
+      <span class="ncr-unit" id="r340-${p.key}" hidden></span>
       ${dose}
     </div></td></tr>`;
     const vial = k => !m.custom ? vialName(k) : `<select data-p="${p.key}" data-k="${k.key}" data-f="type" aria-label="${esc(p.name)} ${esc(amt(q, k.mg))} package type">`
@@ -348,14 +375,16 @@ function update() {
   $("moreSum").textContent = "· Commercial " + n(s.commPct) + "% of limit"
     + (s.seq ? " · sequestration on" : "") + (n(s.erosion) ? " · limit change " + (s.erosion > 0 ? "+" : "") + s.erosion + "%" : "")
     + (s.wasteBill ? " · JW on" : "") + (s.mdvReuse ? " · multi-dose reuse" : "")
-    + (s.is340 ? " · 340B " + Math.round(share340() * 100) + "%" : "");
+    + (s.is340 ? " · 340B " + Math.round(share340() * 100) + "%" + (hopd340() ? " at ASP − 28%" : "") : "");
   const mg = doseMg(m), D = doseUnits(m);
   $("doseLine").innerHTML = m.custom ? `<b>${m.products.length}</b> product${m.products.length === 1 ? "" : "s"}`
     : `Dose: <b>${esc(amt(m, mg))}</b> = <b>${D}</b> billing units`;
   $("exampleNote").hidden = !m.example;
   $("exampleNote").textContent = `Example prices are loaded for ${m.name}. They are made up for illustration and are not real contracts.`;
   const on340 = s.is340, sh = share340(), mixed = on340 && sh > 0 && sh < 1;
-  $("share340L").hidden = $("note340").hidden = !on340;
+  $("share340L").hidden = $("site340L").hidden = !on340;
+  $("note340").hidden = !on340 || hopd340();
+  $("note340h").hidden = !hopd340();
   $("priceTable").classList.toggle("no340", !on340);
   $("priceHead").textContent = on340 ? "Other patients $ / pkg" : "Contract $ / pkg";
 
@@ -369,13 +398,22 @@ function update() {
     const q = pm(m, p);
     const head = $("prod-" + p.key); if (head) head.classList.toggle("ncr-off", !p.include);
     p.pkgs.forEach(k => { const r = $("row-" + p.key + "-" + k.key); if (r) r.classList.toggle("ncr-off", !p.include || !used(k)); });
-    const pay = payPerUnit(p), cp = costed(p);
+    const cp = costed(p), pay = payPerUnit(cp), noRate = no340Rate(p);
+    const r340 = $("r340-" + p.key);
+    if (r340) {
+      const l = limit340(p);
+      r340.hidden = !hopd340() || !hasLimit(p);
+      r340.innerHTML = l !== null ? `340B outpatient rate: <b>${money(l, 3)}</b> / unit`
+        : p.bio && p.bio.addon == null ? "No 340B outpatient rate: this biosimilar’s reference product isn’t known"
+        : "No 340B outpatient rate: the reference product’s CMS limit isn’t in the same billing unit";
+    }
     p.pkgs.forEach((k, i) => {
       const row = $("row-" + p.key + "-" + k.key); if (!row) return;
       const u = units(q, k), net = netPerUnit(cp, cp.pkgs[i], q), ncr = pay - net;
       const o = f => row.querySelector(`[data-o="${f}"]`);
       o("units").textContent = n(k.mg) ? (+(n(k.mg) / q.unitMg).toFixed(2)).toLocaleString("en-US") : "—";
       if (!used(k)) { ["net", "pay", "ncr", "mg%"].forEach(f => { o(f).textContent = "—"; }); return; }
+      if (noRate) { ["pay", "ncr", "mg%"].forEach(f => { o(f).textContent = "—"; }); o("net").textContent = priced(k) && u ? money(net) : "—"; return; }
       o("pay").innerHTML = hasLimit(p) ? money(pay) : enterLimit;
       if (!priced(k)) { o("net").innerHTML = enterPrice; o("ncr").innerHTML = enterPrice; o("mg%").innerHTML = enterPrice; return; }
       o("net").textContent = u ? money(net) : "—";
@@ -396,7 +434,7 @@ function update() {
   }).filter(r => r.c).sort((a, b) => (b.yr - a.yr) || (b.c.ncr - a.c.ncr));
   const res = results("mix");
   const waiting = included.filter(p => !res.some(r => r.p === p));
-  const needs = p => !hasLimit(p) ? enterLimit : m.custom && !doseUnits(pm(m, p)) ? enterDose : enterPrice;
+  const needs = p => !hasLimit(p) ? enterLimit : no340Rate(p) ? '<span class="muted">No 340B outpatient rate for this product, so it can’t be compared with 340B doses in a hospital outpatient department.</span>' : m.custom && !doseUnits(pm(m, p)) ? enterDose : enterPrice;
   const off = m.products.filter(p => !p.include);
   const lead = res[0], second = res[1];
   // Every product given the same number of doses a year: results read per dose.
@@ -424,7 +462,7 @@ function update() {
   $("volNote").hidden = !(byUnits() && m.custom && !oneUnit);
   const volText = (byUnits() ? `${qty(shared)} billing units a year` : `${qty(shared)} doses a year`) + (ownVol ? " unless set for a product" : "");
   $("verdictSub").textContent = m.custom || D ? `${m.name}, ${m.custom ? "each product at its own dose" : D + " billing units per dose"}, ${volText}`
-    + (on340 ? `, ${Math.round(sh * 100)}% bought at 340B.` : ".") : "";
+    + (on340 ? `, ${Math.round(sh * 100)}% bought at 340B` + (hopd340() ? " and paid by Medicare at ASP − 28% (hospital outpatient, from January 1, 2027)." : ".") : ".") : "";
   let summary = "";
   if (lead && !sameYear) {
     const gap = second ? lead.yr - second.yr : 0;
@@ -525,7 +563,9 @@ function update() {
   } else if (bestUnit) {
     const target = bestUnit.ncr;
     $("beBody").innerHTML = m.products.filter(p => p.include).flatMap(p => {
-      const pay = payPerUnit(p), rf = 1 - n(p.rebate) / 100;
+      // with 340B in a hospital outpatient department, Medicare's payment is mixed by the 340B share
+      const pay = payPerUnit(costed(p)), rf = 1 - n(p.rebate) / 100;
+      if (no340Rate(p)) return [`<tr><td><b>${esc(p.name)}</b></td><td colspan="5" class="muted">No 340B outpatient rate for this product.</td></tr>`];
       return p.pkgs.filter(k => units(m, k) > 0).map(k => {
         const u = units(m, k), isLead = k === bestUnit.k;
         // With 340B off (sh = 0) this is the prototype's (pay − target) × units ÷ (1 − rebate).
@@ -674,6 +714,7 @@ $("volBasis").addEventListener("change", e => {
   renderControls(); renderPricing(); update();
 });
 ["medShare", "commPct", "erosion", "share340"].forEach(id => $(id).addEventListener("input", e => { state.settings[id] = n(e.target.value); update(); }));
+$("site340").addEventListener("change", e => { state.settings.site340 = e.target.value === "office" ? "office" : "hopd"; update(); });
 ["seq", "wasteBill", "mdvReuse", "is340"].forEach(id => $(id).addEventListener("change", e => { state.settings[id] = e.target.checked; update(); }));
 
 $("copyBtn").addEventListener("click", () => {
@@ -682,7 +723,8 @@ $("copyBtn").addEventListener("click", () => {
   m.products.filter(ready).map(p => { const q = pm(m, p), D = doseUnits(q), c = bestCombo(costed(p), q, D), y = yearDoses(m, p, D); return {p, q, D, c, y, yr: c ? c.ncr * y : 0}; })
     .filter(r => r.c).sort((a, b) => (b.yr - a.yr) || (b.c.ncr - a.c.ncr))
     .forEach(({p, q, D, c, y, yr}) => rows.push([p.name, p.hcpcs, c.desc, D, +c.discarded.toFixed(2), +c.billed.toFixed(2), c.cost.toFixed(2), c.pay.toFixed(2), c.ncr.toFixed(2), +y.toFixed(1), yr.toFixed(0), perYear(p, c, q, y)]));
-  if (state.settings.is340) rows.push([], ["340B share of doses", Math.round(share340() * 100) + "%"]);
+  if (state.settings.is340) rows.push([], ["340B share of doses", Math.round(share340() * 100) + "%"],
+    ["Medicare payment for 340B doses", hopd340() ? "ASP − 28% (hospital outpatient, CY 2027 OPPS final rule)" : "Payment limit (physician office or exempt hospital)"]);
   const txt = rows.map(r => r.join("\t")).join("\n");
   const done = () => toast("copyToast", "Copied. Paste into Excel or Sheets.", 3500);
   const fallback = () => {

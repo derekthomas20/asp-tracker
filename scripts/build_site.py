@@ -1097,6 +1097,30 @@ def number_text(value: Decimal) -> str:
     return f"{value.normalize():f}"
 
 
+def ncr_biosimilar_basis(groups: list[dict]) -> dict[str, dict]:
+    """For each published biosimilar, what the calculator needs to take the
+    biosimilar's own ASP out of its payment limit (limit = own ASP + add-on %
+    of the reference product's ASP): the add-on (8 when the CMS file notes
+    the 8% add-on, else 6) and the reference product's CMS payment limit.
+    ref_limit is None when the reference has no limit or a different billing
+    unit, and the calculator then shows no 340B outpatient rate."""
+    out = {}
+    for g in groups:
+        ref = g["ref"]
+        for b in g["bios"]:
+            ok = ref["limit"] is not None and same_unit(b["dosage"], ref["dosage"])
+            out[b["code"]] = {"addon": 8 if b["cms_8pct"] else 6,
+                              "ref_limit": plain_decimal(ref["limit"]) if ok else None}
+    return out
+
+
+def looks_biosimilar(row: dict | None) -> bool:
+    """A CMS row for a biosimilar that isn't in a published group: its short
+    descriptor says biosimilar, or its note gives the 8% add-on."""
+    return row is not None and ("biosimilar" in (row["short_description"] or "").lower()
+                                or "8% of reference add-on applied" in (row["notes"] or "").lower())
+
+
 def build_ncr(groups: list[dict], packages: dict[str, set], warn) -> list[dict]:
     """One calculator market per entry in data/ncr_markets.json. Products are
     the published biosimilar group for the market's molecule (one product per
@@ -1105,6 +1129,7 @@ def build_ncr(groups: list[dict], packages: dict[str, set], warn) -> list[dict]:
     with NCR_MARKETS.open(encoding="utf-8") as f:
         config = json.load(f)
     group_of = {g["molecule"]: g for g in groups}
+    bio = ncr_biosimilar_basis(groups)
     covered = set()
     markets = []
     for mk in config["markets"]:
@@ -1178,6 +1203,7 @@ def build_ncr(groups: list[dict], packages: dict[str, set], warn) -> list[dict]:
                     "status": "cms" if e["limit"] is not None else "no_limit",
                     "cms_limit": plain_decimal(e["limit"]) if e["limit"] is not None else None,
                     "cms_dosage": e["dosage"],
+                    "bio": bio.get(e["code"]),
                     "example_rebate_pct": mk.get("example_rebates", {}).get(name, 0),
                     "packages": [pkgs[k] for k in sorted(pkgs)],
                 })
@@ -1248,6 +1274,7 @@ def build_ncr_catalog(latest: dict[str, dict], packages: dict[str, set], groups:
     A code whose billing unit is not an amount ('PER DOSE', '1 EA') is dosed
     in billing units."""
     role = {e["code"]: e["role"] for g in groups for e in [g["ref"], *g["bios"]]}
+    bio = ncr_biosimilar_basis(groups)
     in_market = {}
     for mk in markets:
         for p in mk["products"]:
@@ -1281,6 +1308,8 @@ def build_ncr_catalog(latest: dict[str, dict], packages: dict[str, set], groups:
                 "status": "missing" if r is None else "cms" if limit is not None else "no_limit",
                 "cms_limit": plain_decimal(limit) if limit is not None else None,
                 "cms_dosage": dosage or "",
+                # a biosimilar outside the published groups has no known reference
+                "bio": bio.get(code) or ({"addon": None, "ref_limit": None} if looks_biosimilar(r) else None),
                 "unit_size": float(size), "unit_name": measure,
                 "unit_label": f"{size.normalize():,f} {measure}" if bu else (dosage or "1 billing unit"),
                 "dose": {k: mk["dose"][k] for k in ("basis", "value")} if mk else None,
