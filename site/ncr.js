@@ -45,6 +45,8 @@ function makeProduct(d, e) {
     limit: override !== null ? override : (d.cms_limit || ""),
     rebate: typeof e.rebate === "string" ? e.rebate : "",
     include: e.off !== true,
+    // marked by the visitor: pass-through drugs keep the payment limit for 340B doses
+    passThrough: e.pt === true,
     pkgs: d.packages.map(k => ({key: k.key, mg: k.amount, units: k.units,
       type: ["SDV", "MDV", "OFF"].includes(types[k.key]) ? types[k.key] : k.type, examplePrice: k.example_price,
       price: typeof prices[k.key] === "string" ? prices[k.key] : "",
@@ -105,6 +107,7 @@ function savedProduct(p, custom) {
   if (overridden(p)) e.limit = p.limit;
   if (p.rebate !== "") e.rebate = p.rebate;
   if (!p.include) e.off = true;
+  if (p.passThrough) e.pt = true;
   p.pkgs.forEach(k => { if (k.price !== "") prices[k.key] = k.price; if (k.price340 !== "") prices340[k.key] = k.price340; });
   if (Object.keys(prices).length) e.prices = prices;
   if (Object.keys(prices340).length) e.prices340 = prices340;
@@ -174,7 +177,11 @@ function limit340(p) {
   const own = n(p.limit) - p.bio.addon / 100 * n(p.bio.ref_limit) / (1 + ASP_ADDON);
   return own > 0 ? own * (1 - OPPS_340B_CUT) : null;
 }
-const no340Rate = p => hopd340() && need340() && hasLimit(p) && limit340(p) === null;
+// Drugs with transitional pass-through status are exempt from the cut. The
+// site has no pass-through list (it is in OPPS Addendum B, behind the AMA
+// license), so the visitor ticks it for each product.
+const cut340 = p => hopd340() && !p.passThrough;
+const no340Rate = p => cut340(p) && need340() && hasLimit(p) && limit340(p) === null;
 // The product as the ported math sees it. With 340B off it is the product
 // itself. With 340B on, each package's price becomes its cost per package
 // (rebate already applied, so rebate is 0): the 340B price, the other
@@ -184,7 +191,7 @@ const no340Rate = p => hopd340() && need340() && hasLimit(p) && limit340(p) === 
 function costed(p, channel) {
   if (!state.settings.is340) return p;
   const sh = channel === "other" ? 0 : channel === "340b" ? 1 : share340(), rf = 1 - n(p.rebate) / 100;
-  const l340 = hopd340() && sh > 0 ? limit340(p) : null;
+  const l340 = cut340(p) && sh > 0 ? limit340(p) : null;
   return Object.assign({}, p, {rebate: 0, pkgs: p.pkgs.map(k => Object.assign({}, k,
     {price: (1 - sh) * n(k.price) * rf + sh * n(k.price340)}))},
     l340 === null ? {} : {medLimit: (1 - sh) * n(p.limit) + sh * l340});
@@ -316,6 +323,7 @@ function renderPricing() {
       <label>Payment limit / unit $<input class="ncr-lim" type="number" step="0.001" min="0" inputmode="decimal" data-p="${p.key}" data-f="limit" value="${esc(p.limit)}"></label>
       <label>Rebate %<input class="ncr-reb" type="number" step="0.1" min="0" max="100" inputmode="decimal" data-p="${p.key}" data-f="rebate" value="${esc(p.rebate)}"></label>
       <span class="ncr-status" id="st-${p.key}"></span>
+      <label class="ncr-inc" id="ptL-${p.key}" hidden><input type="checkbox" data-p="${p.key}" data-f="passThrough"${p.passThrough ? " checked" : ""} aria-label="${esc(p.name)} has transitional pass-through status">Pass-through</label>
       <span class="ncr-unit" id="r340-${p.key}" hidden></span>
       ${dose}
     </div></td></tr>`;
@@ -400,10 +408,12 @@ function update() {
     p.pkgs.forEach(k => { const r = $("row-" + p.key + "-" + k.key); if (r) r.classList.toggle("ncr-off", !p.include || !used(k)); });
     const cp = costed(p), pay = payPerUnit(cp), noRate = no340Rate(p);
     const r340 = $("r340-" + p.key);
+    const ptL = $("ptL-" + p.key); if (ptL) ptL.hidden = !hopd340();
     if (r340) {
       const l = limit340(p);
       r340.hidden = !hopd340() || !hasLimit(p);
-      r340.innerHTML = l !== null ? `340B outpatient rate: <b>${money(l, 3)}</b> / unit`
+      r340.innerHTML = p.passThrough ? "Pass-through: 340B doses are paid the payment limit"
+        : l !== null ? `340B outpatient rate: <b>${money(l, 3)}</b> / unit`
         : p.bio && p.bio.addon == null ? "No 340B outpatient rate: this biosimilar’s reference product isn’t known"
         : "No 340B outpatient rate: the reference product’s CMS limit isn’t in the same billing unit";
     }
@@ -725,6 +735,8 @@ $("copyBtn").addEventListener("click", () => {
     .forEach(({p, q, D, c, y, yr}) => rows.push([p.name, p.hcpcs, c.desc, D, +c.discarded.toFixed(2), +c.billed.toFixed(2), c.cost.toFixed(2), c.pay.toFixed(2), c.ncr.toFixed(2), +y.toFixed(1), yr.toFixed(0), perYear(p, c, q, y)]));
   if (state.settings.is340) rows.push([], ["340B share of doses", Math.round(share340() * 100) + "%"],
     ["Medicare payment for 340B doses", hopd340() ? "ASP − 28% (hospital outpatient, CY 2027 OPPS final rule)" : "Payment limit (physician office or exempt hospital)"]);
+  const pt = hopd340() ? m.products.filter(p => p.include && p.passThrough) : [];
+  if (pt.length) rows.push(["Pass-through (paid the payment limit for 340B doses)", pt.map(p => p.name).join(", ")]);
   const txt = rows.map(r => r.join("\t")).join("\n");
   const done = () => toast("copyToast", "Copied. Paste into Excel or Sheets.", 3500);
   const fallback = () => {
