@@ -154,6 +154,28 @@
       "change_reason": "new",
       "etag": null,
       "last_modified": "Mon, 11 May 2026 19:35:29 GMT"
+    },
+    {
+      "key": "part_b_spending_quarterly|2026Q2",
+      "version": 1,
+      "series": "part_b_spending_quarterly",
+      "dataset_title": "Medicare Quarterly Part B Spending by Drug : 2026-04-01",
+      "period": "2026Q2",
+      "period_start": "2026-04-01",
+      "period_end": "2026-06-30",
+      "url": "https://data.cms.gov/sites/default/files/2026-11/qddptb_r2604_p06_v10_dqt2602_261118.csv",
+      "landing_page": "https://data.cms.gov/summary-statistics-on-use-and-payments/medicare-medicaid-spending-by-drug/medicare-quarterly-part-b-spending-by-drug",
+      "catalog_modified": "2026-11-19",
+      "local_path": "raw/data-cms-gov/quarterly-part-b-spending-by-drug/2026Q2/2026-11-19_qddptb_r2604_p06_v10_dqt2602_261118.csv",
+      "stored_as": "csv",
+      "sha256": "ff93d87bd6d6cad981f0092761c6e7a8d7705ba887187c22840663f0a5206afe",
+      "size_bytes": 207025,
+      "stored_sha256": "ff93d87bd6d6cad981f0092761c6e7a8d7705ba887187c22840663f0a5206afe",
+      "stored_size_bytes": 207025,
+      "downloaded_at": "2026-11-23T21:30:43+00:00",
+      "change_reason": "new",
+      "etag": null,
+      "last_modified": "Wed, 18 Nov 2026 18:27:16 GMT"
     }
   ]
 }
